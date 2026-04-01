@@ -507,7 +507,6 @@
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .pd-reco-grid { grid-template-columns: repeat(3, 1fr); }
-<<<<<<< HEAD
 }
 
 @media (max-width: 900px) {
@@ -527,8 +526,7 @@
 @media (max-width: 400px) {
   .pd-reco-grid { grid-template-columns: 1fr; }
 }
-=======
-}
+
 
 @media (max-width: 900px) {
   .pd-top       { grid-template-columns: 1fr; gap: 32px; }
@@ -547,4 +545,3 @@
 @media (max-width: 400px) {
   .pd-reco-grid { grid-template-columns: 1fr; }
 }
->>>>>>> c8650a4 (update cart)
