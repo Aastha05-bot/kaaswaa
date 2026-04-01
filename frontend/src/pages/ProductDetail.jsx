@@ -4,186 +4,333 @@ import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/ProductDetail.css";
 
-function ProductDetail() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+const BASE = "http://localhost:5000/api";
 
+function ProductDetail() {
+  const { id }     = useParams();
+  const navigate   = useNavigate();
   const token      = localStorage.getItem("token");
   const username   = localStorage.getItem("username");
   const isLoggedIn = !!token;
+  const authHeader = { Authorization: `Bearer ${token}` };
 
-  const [product,  setProduct]  = useState(null);
-  const [loading,  setLoading]  = useState(true);
-  const [error,    setError]    = useState("");
   const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
   const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
-  const [qty,      setQty]      = useState(1);
-  const [added,    setAdded]    = useState(false);
-  const [reviews,  setReviews]  = useState([]);
 
-  /* ---------- fetch product ---------- */
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        setLoading(true);
-        const res  = await fetch(`http://localhost:5000/api/products/${id}`);
-        if (!res.ok) throw new Error("Not found");
-        const data = await res.json();
-        setProduct({
-          id:          data.product_id,
-          name:        data.product_name,
-          price:       parseFloat(data.price),
-          category:    data.category_name || "General",
-          tag:         data.tag || "",
-          image:       data.image_url || "/placeholder.jpg",
-          description: data.description || "",
-        });
-      } catch {
-        setError("Product not found.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProduct();
-  }, [id]);
+  const [product,        setProduct]        = useState(null);
+  const [reviews,        setReviews]        = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [inWishlist,     setInWishlist]     = useState(false);
+  const [addedCart,      setAddedCart]      = useState(false);
+  const [rating,         setRating]         = useState(0);
+  const [hoverRating,    setHoverRating]    = useState(0);
+  const [comment,        setComment]        = useState("");
+  const [reviewMsg,      setReviewMsg]      = useState("");
+  const [submitting,     setSubmitting]     = useState(false);
 
-  /* ---------- fetch reviews ---------- */
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        const res  = await fetch(`http://localhost:5000/api/feedback/${id}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        setReviews(data);
-      } catch { /* silent */ }
-    };
-    fetchReviews();
-  }, [id]);
-
-  /* ---------- persist cart / wishlist ---------- */
+  // Persist wishlist & cart
   useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
   useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
 
-  const requireAuth = (action) => { if (!isLoggedIn) { navigate("/login"); return; } action(); };
+  useEffect(() => {
+    fetchProduct();
+    fetchReviews();
+    fetchRecommendations();
+    const saved = JSON.parse(localStorage.getItem("wishlist") || "[]");
+    if (id && saved.includes(Number(id))) setInWishlist(true);
+  }, [id]);
 
-  const toggleWishlist = () =>
-    requireAuth(() =>
-      setWishlist((prev) =>
-        prev.includes(product.id) ? prev.filter((i) => i !== product.id) : [...prev, product.id]
-      )
-    );
+  const fetchProduct = async () => {
+    try {
+      setLoading(true);
+      const res  = await fetch(`${BASE}/products/${id}`);
+      if (!res.ok) throw new Error("Not found");
+      const data = await res.json();
+      setProduct(data);
+    } catch {
+      setProduct(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const addToCart = () =>
-    requireAuth(() => {
-      const items = Array(qty).fill(product.id);
-      setCart((prev) => [...prev, ...items]);
-      setAdded(true);
-      setTimeout(() => setAdded(false), 2000);
-    });
+  const fetchReviews = async () => {
+    try {
+      const res  = await fetch(`${BASE}/feedback/${id}`);
+      const data = await res.json();
+      setReviews(Array.isArray(data) ? data : []);
+    } catch { /* silent */ }
+  };
+
+  // ── Fetch category-based recommendations ──
+  const fetchRecommendations = async () => {
+    try {
+      const res  = await fetch(`${BASE}/recommendations/${id}`);
+      const data = await res.json();
+      setRecommendations(Array.isArray(data) ? data : []);
+    } catch { /* silent */ }
+  };
+
+  const handleAddToCart = async () => {
+    if (!isLoggedIn) { navigate("/login"); return; }
+    try {
+      await fetch(`${BASE}/cart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          product_id: product.product_id,
+          quantity:   1,
+          price:      product.price,
+        }),
+      });
+      setCart((prev) => [...prev, product.product_id]);
+      setAddedCart(true);
+      setTimeout(() => setAddedCart(false), 2000);
+    } catch {
+      alert("Failed to add to cart");
+    }
+  };
+
+  const handleWishlist = async () => {
+    if (!isLoggedIn) { navigate("/login"); return; }
+    try {
+      if (inWishlist) {
+        await fetch(`${BASE}/wishlist/${product.product_id}`, {
+          method: "DELETE",
+          headers: authHeader,
+        });
+        setInWishlist(false);
+        setWishlist((prev) => prev.filter((i) => i !== product.product_id));
+      } else {
+        await fetch(`${BASE}/wishlist`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify({ product_id: product.product_id }),
+        });
+        setInWishlist(true);
+        setWishlist((prev) => [...prev, product.product_id]);
+      }
+    } catch {
+      alert("Failed to update wishlist");
+    }
+  };
+
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!isLoggedIn) { navigate("/login"); return; }
+    if (!rating) { setReviewMsg("Please select a rating"); return; }
+
+    setSubmitting(true);
+    try {
+      const res  = await fetch(`${BASE}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({
+          product_id: product.product_id,
+          comment,
+          ratings:    rating,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setReviewMsg(data.message); return; }
+      setReviewMsg("✓ Review submitted!");
+      setComment("");
+      setRating(0);
+      fetchReviews();
+    } catch {
+      setReviewMsg("Failed to submit review");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Helper: render filled/empty stars from a numeric rating
+  const renderStars = (val) => {
+    const rounded = Math.round(val || 0);
+    return "★".repeat(rounded) + "☆".repeat(5 - rounded);
+  };
 
   const avgRating = reviews.length
     ? (reviews.reduce((s, r) => s + r.ratings, 0) / reviews.length).toFixed(1)
     : null;
 
-  const stars = (n) =>
-    Array.from({ length: 5 }, (_, i) => (
-      <span key={i} className={`star ${i < Math.round(n) ? "filled" : ""}`}>★</span>
-    ));
+  if (loading) return (
+    <div className="pd-page">
+      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <div className="pd-loading"><div className="pd-spinner" /></div>
+      <Footer />
+    </div>
+  );
 
-  if (loading) return <div className="pd-loading"><div className="pd-spinner" /></div>;
-  if (error)   return <div className="pd-error"><p>{error}</p><button onClick={() => navigate("/products")}>← Back</button></div>;
-
-  const inWishlist = wishlist.includes(product.id);
+  if (!product) return (
+    <div className="pd-page">
+      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <div className="pd-loading">
+        <p>Product not found.</p>
+        <button className="pd-back-btn" onClick={() => navigate("/products")}>← Back to Products</button>
+      </div>
+      <Footer />
+    </div>
+  );
 
   return (
     <div className="pd-page">
       <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
 
-      <div className="pd-breadcrumb">
-        <span onClick={() => navigate("/")}>Home</span>
-        <span className="pd-bc-sep">›</span>
-        <span onClick={() => navigate("/products")}>Products</span>
-        <span className="pd-bc-sep">›</span>
-        <span className="pd-bc-current">{product.name}</span>
-      </div>
+      <div className="pd-container">
 
-      {/* ---- Main detail card ---- */}
-      <section className="pd-main">
-        <div className="pd-img-wrap">
-          {product.tag && <span className="pd-tag">{product.tag}</span>}
-          <img src={product.image} alt={product.name} className="pd-img" />
-          <button
-            className={`pd-wish-btn ${inWishlist ? "active" : ""}`}
-            onClick={toggleWishlist}
-            title={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
-          >
-            {inWishlist ? "♥" : "♡"}
-          </button>
-        </div>
+        {/* Back button */}
+        <button className="pd-back-btn" onClick={() => navigate(-1)}>← Back</button>
 
-        <div className="pd-info">
-          <p className="pd-cat">{product.category}</p>
-          <h1 className="pd-name">{product.name}</h1>
-
-          {avgRating && (
-            <div className="pd-rating-row">
-              <div className="pd-stars">{stars(avgRating)}</div>
-              <span className="pd-rating-val">{avgRating}</span>
-              <span className="pd-review-count">({reviews.length} review{reviews.length !== 1 ? "s" : ""})</span>
-            </div>
-          )}
-
-          <p className="pd-price">Rs. {product.price.toLocaleString()}</p>
-
-          {product.description && (
-            <p className="pd-desc">{product.description}</p>
-          )}
-
-          <div className="pd-actions">
-            <div className="pd-qty-wrap">
-              <button className="pd-qty-btn" onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
-              <span className="pd-qty-val">{qty}</span>
-              <button className="pd-qty-btn" onClick={() => setQty((q) => q + 1)}>+</button>
-            </div>
-            <button
-              className={`pd-cart-btn ${added ? "added" : ""}`}
-              onClick={addToCart}
-            >
-              {added ? "✓ Added to Cart!" : "Add to Cart"}
-            </button>
+        {/* ── Product top ── */}
+        <div className="pd-top">
+          <div className="pd-img-wrap">
+            <img src={product.image_url || "/placeholder.jpg"} alt={product.product_name} />
+            {product.tag && <span className="pd-tag">{product.tag}</span>}
           </div>
 
-          <button className="pd-view-cart-btn" onClick={() => navigate("/cart")}>
-            View Cart →
-          </button>
-        </div>
-      </section>
+          <div className="pd-info">
+            <p className="pd-category">{product.category_name || "General"}</p>
+            <h1 className="pd-name">{product.product_name}</h1>
 
-      {/* ---- Reviews ---- */}
-      <section className="pd-reviews">
-        <h2 className="pd-reviews-title">Customer Reviews</h2>
-
-        {reviews.length === 0 ? (
-          <p className="pd-no-reviews">No reviews yet. Be the first to share your thoughts!</p>
-        ) : (
-          <div className="pd-reviews-grid">
-            {reviews.map((r) => (
-              <div key={r.feedback_id} className="pd-review-card">
-                <div className="pd-review-top">
-                  <div className="pd-review-stars">{stars(r.ratings)}</div>
-                  <span className="pd-review-date">
-                    {new Date(r.feedback_date).toLocaleDateString("en-NP", {
-                      year: "numeric", month: "short", day: "numeric",
-                    })}
-                  </span>
-                </div>
-                {r.comment && <p className="pd-review-comment">{r.comment}</p>}
+            {avgRating && (
+              <div className="pd-avg-rating">
+                {renderStars(avgRating)}
+                <span>{avgRating} ({reviews.length} {reviews.length === 1 ? "review" : "reviews"})</span>
               </div>
-            ))}
+            )}
+
+            <p className="pd-price">Rs. {parseFloat(product.price).toLocaleString()}</p>
+            <p className="pd-desc">{product.description || "No description available."}</p>
+
+            <div className="pd-actions">
+              <button
+                className={`pd-cart-btn ${addedCart ? "added" : ""}`}
+                onClick={handleAddToCart}
+              >
+                {addedCart ? "✓ Added to Cart!" : "Add to Cart"}
+              </button>
+              <button
+                className={`pd-wish-btn ${inWishlist ? "active" : ""}`}
+                onClick={handleWishlist}
+              >
+                {inWishlist ? "♥ Wishlisted" : "♡ Wishlist"}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Reviews ── */}
+        <div className="pd-reviews">
+          <h2>Reviews {reviews.length > 0 && `(${reviews.length})`}</h2>
+
+          {/* Write review */}
+          <div className="pd-review-form">
+            <h3>Leave a Review</h3>
+            <form onSubmit={handleReviewSubmit}>
+              <div className="pd-stars">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    className={`pd-star ${star <= (hoverRating || rating) ? "filled" : ""}`}
+                    onClick={() => setRating(star)}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                  >
+                    ★
+                  </span>
+                ))}
+              </div>
+              <textarea
+                placeholder="Write your review (optional)..."
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                rows={3}
+              />
+              {reviewMsg && <p className="pd-review-msg">{reviewMsg}</p>}
+              <button type="submit" disabled={submitting}>
+                {submitting ? "Submitting..." : "Submit Review"}
+              </button>
+            </form>
+          </div>
+
+          {/* Review list */}
+          <div className="pd-review-list">
+            {reviews.length === 0 ? (
+              <p className="pd-no-reviews">No reviews yet. Be the first!</p>
+            ) : (
+              reviews.map((r) => (
+                <div key={r.feedback_id} className="pd-review-card">
+                  <div className="pd-review-header">
+                    <span className="pd-reviewer">{r.full_name}</span>
+                    <span className="pd-review-stars">
+                      {"★".repeat(r.ratings)}{"☆".repeat(5 - r.ratings)}
+                    </span>
+                    <span className="pd-review-date">
+                      {new Date(r.feedback_date).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {r.comment && <p className="pd-review-comment">{r.comment}</p>}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── Recommendations ── */}
+        {recommendations.length > 0 && (
+          <div className="pd-reco">
+            <div className="pd-reco-header">
+              <h2>You Might Also Like</h2>
+              <p className="pd-reco-sub">
+                More from <strong>{product.category_name}</strong>
+              </p>
+            </div>
+
+            <div className="pd-reco-grid">
+              {recommendations.map((rec) => (
+                <div
+                  key={rec.product_id}
+                  className="pd-reco-card"
+                  onClick={() => navigate(`/products/${rec.product_id}`)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(`/products/${rec.product_id}`)}
+                >
+                  <div className="pd-reco-img">
+                    <img
+                      src={rec.image_url || "/placeholder.jpg"}
+                      alt={rec.product_name}
+                    />
+                    {rec.tag && <span className="pd-reco-tag">{rec.tag}</span>}
+                  </div>
+
+                  <div className="pd-reco-body">
+                    <p className="pd-reco-cat">{rec.category_name}</p>
+                    <h3 className="pd-reco-name">{rec.product_name}</h3>
+
+                    {rec.avg_rating && (
+                      <div className="pd-reco-stars">
+                        {renderStars(rec.avg_rating)}
+                        <span>
+                          {rec.avg_rating}
+                          {rec.review_count > 0 && ` (${rec.review_count})`}
+                        </span>
+                      </div>
+                    )}
+
+                    <p className="pd-reco-price">
+                      Rs. {parseFloat(rec.price).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-      </section>
 
+      </div>
       <Footer />
     </div>
   );

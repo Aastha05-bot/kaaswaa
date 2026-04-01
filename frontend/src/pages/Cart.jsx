@@ -17,6 +17,7 @@ function Cart() {
   const [loading,   setLoading]   = useState(true);
   const [placing,   setPlacing]   = useState(false);
   const [ordered,   setOrdered]   = useState(false);
+  const [selected,  setSelected]  = useState({}); // { [productId]: true/false }
 
   /* persist */
   useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
@@ -34,7 +35,7 @@ function Cart() {
         if (!res.ok) throw new Error();
         const data = await res.json();
         setProducts(
-          data.map((p) => ({
+          (Array.isArray(data) ? data : []).map((p) => ({
             id:       p.product_id,
             name:     p.product_name,
             price:    parseFloat(p.price),
@@ -59,9 +60,24 @@ function Cart() {
     })).filter((item) => item.product);
   })();
 
-  const subtotal = cartItems.reduce((s, { product, qty }) => s + product.price * qty, 0);
-  const shipping = subtotal > 0 ? 150 : 0;    // flat Rs. 150
-  const total    = subtotal + shipping;
+  /* Selection helpers */
+  const toggleSelect = (id) =>
+    setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
+
+  const toggleSelectAll = () => {
+    const allSelected = cartItems.every((i) => selected[i.product.id]);
+    const next = {};
+    cartItems.forEach((i) => { next[i.product.id] = !allSelected; });
+    setSelected(next);
+  };
+
+  const selectedItems = cartItems.filter((i) => selected[i.product.id]);
+  const allSelected   = cartItems.length > 0 && cartItems.every((i) => selected[i.product.id]);
+
+  /* Totals — only selected items */
+  const subtotal = selectedItems.reduce((s, { product, qty }) => s + product.price * qty, 0);
+  const shipping  = subtotal > 0 ? 150 : 0;
+  const total     = subtotal + shipping;
 
   /* Qty helpers */
   const setItemQty = (id, newQty) => {
@@ -72,7 +88,10 @@ function Cart() {
     });
   };
 
-  const removeItem = (id) => setItemQty(id, 0);
+  const removeItem = (id) => {
+    setItemQty(id, 0);
+    setSelected((prev) => { const n = { ...prev }; delete n[id]; return n; });
+  };
 
   const moveToWishlist = (id) => {
     removeItem(id);
@@ -81,6 +100,10 @@ function Cart() {
 
   /* Place order → POST /api/cart */
   const placeOrder = async () => {
+    if (selectedItems.length === 0) {
+      alert("Please select at least one item to place an order.");
+      return;
+    }
     try {
       setPlacing(true);
       const userId = localStorage.getItem("user_id");
@@ -127,16 +150,32 @@ function Cart() {
       <div className="cart-layout">
         {/* ---- Items column ---- */}
         <div className="cart-items-col">
+
+          {/* Select All */}
+          {!loading && cartItems.length > 0 && (
+            <div className="cart-select-all">
+              <label className="cart-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleSelectAll}
+                  className="cart-checkbox"
+                />
+                <span>Select All ({cartItems.length} items)</span>
+              </label>
+            </div>
+          )}
+
           {loading ? (
             <div className="cart-loading"><div className="cart-spinner" /></div>
           ) : cartItems.length === 0 ? (
             <div className="cart-empty">
               <svg width="50" height="50" viewBox="0 0 24 24" fill="none"
-              stroke="gray" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1" />
-              <circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6" />
-            </svg>
+                stroke="gray" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="9" cy="21" r="1" />
+                <circle cx="20" cy="21" r="1" />
+                <path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6" />
+              </svg>
               <h3>Your cart is empty</h3>
               <button className="cart-shop-btn" onClick={() => navigate("/products")}>
                 Browse Products
@@ -145,10 +184,11 @@ function Cart() {
           ) : (
             cartItems.map(({ product, qty }, i) => (
               <div
-                className="cart-item"
+                className={`cart-item ${selected[product.id] ? "cart-item--selected" : ""}`}
                 key={product.id}
                 style={{ animationDelay: `${i * 0.07}s` }}
               >
+                {/* Left: image */}
                 <div
                   className="cart-item-img"
                   onClick={() => navigate(`/product/${product.id}`)}
@@ -156,6 +196,7 @@ function Cart() {
                   <img src={product.image} alt={product.name} />
                 </div>
 
+                {/* Middle: details */}
                 <div className="cart-item-body">
                   <p className="cart-item-cat">{product.category}</p>
                   <h3 onClick={() => navigate(`/product/${product.id}`)}>{product.name}</h3>
@@ -168,7 +209,6 @@ function Cart() {
                       <span className="cart-qty-val">{qty}</span>
                       <button className="cart-qty-btn" onClick={() => setItemQty(product.id, qty + 1)}>+</button>
                     </div>
-
                     <p className="cart-item-total">Rs. {(product.price * qty).toLocaleString()}</p>
                   </div>
 
@@ -181,6 +221,16 @@ function Cart() {
                     </button>
                   </div>
                 </div>
+
+                {/* Right: select checkbox */}
+                <div className="cart-item-select">
+                  <input
+                    type="checkbox"
+                    className="cart-checkbox"
+                    checked={!!selected[product.id]}
+                    onChange={() => toggleSelect(product.id)}
+                  />
+                </div>
               </div>
             ))
           )}
@@ -191,27 +241,31 @@ function Cart() {
           <div className="cart-summary">
             <h2 className="cart-summary-title">Order Summary</h2>
 
-            <div className="cart-summary-rows">
-              <div className="cart-summary-row">
-                <span>Subtotal ({cartItems.reduce((s, i) => s + i.qty, 0)} items)</span>
-                <span>Rs. {subtotal.toLocaleString()}</span>
+            {selectedItems.length === 0 ? (
+              <p className="cart-summary-empty">Select items to see total</p>
+            ) : (
+              <div className="cart-summary-rows">
+                <div className="cart-summary-row">
+                  <span>Subtotal ({selectedItems.reduce((s, i) => s + i.qty, 0)} items)</span>
+                  <span>Rs. {subtotal.toLocaleString()}</span>
+                </div>
+                <div className="cart-summary-row">
+                  <span>Shipping</span>
+                  <span>Rs. {shipping.toLocaleString()}</span>
+                </div>
+                <div className="cart-summary-row cart-summary-total">
+                  <span>Total</span>
+                  <span>Rs. {total.toLocaleString()}</span>
+                </div>
               </div>
-              <div className="cart-summary-row">
-                <span>Shipping</span>
-                <span>Rs. {shipping.toLocaleString()}</span>
-              </div>
-              <div className="cart-summary-row cart-summary-total">
-                <span>Total</span>
-                <span>Rs. {total.toLocaleString()}</span>
-              </div>
-            </div>
+            )}
 
             <button
-              className={`cart-checkout-btn ${placing ? "loading" : ""}`}
+              className={`cart-checkout-btn ${placing ? "loading" : ""} ${selectedItems.length === 0 ? "disabled" : ""}`}
               onClick={placeOrder}
-              disabled={placing}
+              disabled={placing || selectedItems.length === 0}
             >
-              {placing ? "Placing Order…" : "Place Order"}
+              {placing ? "Placing Order…" : `Place Order${selectedItems.length > 0 ? ` (${selectedItems.length})` : ""}`}
             </button>
 
             <button className="cart-continue-link" onClick={() => navigate("/products")}>

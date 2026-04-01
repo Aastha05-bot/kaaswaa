@@ -4,8 +4,13 @@ import "../Styles/Home.css";
 import Header from "./Header";
 import Footer from "./Footer";
 
+<<<<<<< HEAD
 
 const INSTAGRAM_USERNAME = "kaaswaa";
+=======
+// ✅ Replace with your actual Instagram username
+const INSTAGRAM_USERNAME = "kaaswaacrafts";
+>>>>>>> c8650a4 (update cart)
 
 function Home() {
   const navigate = useNavigate();

@@ -507,6 +507,7 @@
 /* ── Responsive ── */
 @media (max-width: 1024px) {
   .pd-reco-grid { grid-template-columns: repeat(3, 1fr); }
+<<<<<<< HEAD
 }
 
 @media (max-width: 900px) {
@@ -526,3 +527,24 @@
 @media (max-width: 400px) {
   .pd-reco-grid { grid-template-columns: 1fr; }
 }
+=======
+}
+
+@media (max-width: 900px) {
+  .pd-top       { grid-template-columns: 1fr; gap: 32px; }
+  .pd-container { padding: 32px 40px 60px; }
+  .pd-reco-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 600px) {
+  .pd-container  { padding: 24px 20px 48px; }
+  .pd-actions    { flex-direction: column; }
+  .pd-cart-btn, .pd-wish-btn { width: 100%; }
+  .pd-reco-grid  { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .pd-reco-header { flex-direction: column; }
+}
+
+@media (max-width: 400px) {
+  .pd-reco-grid { grid-template-columns: 1fr; }
+}
+>>>>>>> c8650a4 (update cart)

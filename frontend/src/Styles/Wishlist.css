@@ -20,8 +20,9 @@
 
 /* ── Content wrapper ── */
 .wl-content {
-  max-width: 1200px; margin: 0 auto;
-  padding: 40px 80px 80px;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
 }
 
 /* ── Empty state ── */
@@ -55,82 +56,106 @@
 }
 @keyframes wl-spin { to { transform: rotate(360deg); } }
 
-/* ── Grid ── */
-.wl-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 24px;
+/* ── List (vertical stack like cart) ── */
+.wl-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-/* ── Card — reuses product-card pattern ── */
+/* ── Card — horizontal like cart ── */
 .wl-card {
   background: var(--white);
-  border-radius: 16px; overflow: hidden;
-  display: flex; flex-direction: column;
-  border: 1px solid rgba(232, 90, 138, 0.1);
+  border-radius: 16px;
+  border: 1px solid rgba(232, 90, 138, 0.12);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
   transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  animation: fadeUp 0.6s both;
+  animation: fadeUp 0.5s both;
+  position: relative;
 }
 .wl-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 50px rgba(232, 90, 138, 0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px rgba(232, 90, 138, 0.12);
+  border-color: rgba(232, 90, 138, 0.3);
 }
 
+/* ── Image ── */
 .wl-card-img {
-  height: 220px; position: relative;
-  overflow: hidden; background: var(--pink-soft);
-  cursor: pointer; flex-shrink: 0;
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--pink-soft);
+  cursor: pointer;
+  position: relative;
 }
 .wl-card-img img {
-  width: 100%; height: 100%; object-fit: cover;
-  display: block; transition: transform 0.4s ease;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease;
 }
 .wl-card:hover .wl-card-img img { transform: scale(1.06); }
 
 .wl-tag {
-  position: absolute; top: 12px; left: 12px;
+  position: absolute; top: 8px; left: 8px;
   background: var(--pink); color: #fff;
-  font-size: 13px; font-weight: 550;
-  padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px;
+  font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 20px; letter-spacing: 0.4px;
 }
 
-.wl-remove-btn {
-  position: absolute; top: 10px; right: 12px;
-  width: 34px; height: 34px;
-  background: var(--white); border: none; border-radius: 50%;
-  font-size: 13px; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--gray);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-  transition: all 0.2s;
+/* ── Body ── */
+.wl-card-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
-.wl-remove-btn:hover { background: var(--pink); color: #fff; }
 
-.wl-card-info {
-  padding: 14px 16px 18px;
-  flex: 1; display: flex; flex-direction: column; gap: 4px;
-}
 .wl-cat {
-  font-size: 13px; letter-spacing: 1.5px;
+  font-size: 12px; letter-spacing: 1.4px;
   text-transform: uppercase; color: var(--pink-light);
   font-weight: 500; margin: 0;
 }
-.wl-card-info h3 {
-  font-size: 16px; font-weight: 550;
-  color: var(--dark); margin: 0; cursor: pointer;
-  transition: color 0.2s;
+
+.wl-card-body h3 {
+  font-size: 17px; font-weight: 600;
+  color: var(--dark); margin: 0;
+  cursor: pointer; transition: color 0.2s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.wl-card-info h3:hover { color: var(--pink); }
+.wl-card-body h3:hover { color: var(--pink); }
+
+.wl-desc {
+  font-size: 13px; color: var(--gray);
+  margin: 0; font-weight: 300;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 .wl-price {
-  font-size: 16px; font-weight: 600;
-  color: var(--pink); margin: 0 0 10px;
+  font-size: 16px; font-weight: 700;
+  color: var(--pink); margin: 4px 0 10px;
 }
 
-.wl-btns { display: flex; gap: 8px; flex-direction: column; margin-top: auto; }
+/* ── Action buttons ── */
+.wl-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  flex-wrap: wrap;
+}
 
 .wl-cart-btn {
-  width: 100%; padding: 9px;
+  padding: 8px 22px;
   background: var(--pink-pale);
   border: 1.5px solid var(--pink); color: var(--pink);
   border-radius: 25px; font-size: 14px; font-weight: 500;
@@ -141,7 +166,7 @@
 .wl-cart-btn.added  { background: #6aaa7e; border-color: #6aaa7e; color: #fff; }
 
 .wl-move-btn {
-  width: 100%; padding: 9px;
+  padding: 8px 22px;
   background: var(--dark); border: 1.5px solid var(--dark);
   border-radius: 25px; color: #fff;
   font-size: 14px; font-weight: 500;
@@ -150,21 +175,31 @@
 }
 .wl-move-btn:hover { opacity: 0.82; }
 
+/* ── Remove button (right side) ── */
+.wl-remove-btn {
+  width: 34px; height: 34px;
+  background: var(--white);
+  border: 1px solid #eee;
+  border-radius: 50%;
+  font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gray);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  transition: all 0.2s;
+  flex-shrink: 0;
+  align-self: center;
+}
+.wl-remove-btn:hover { background: var(--pink); color: #fff; border-color: var(--pink); }
+
 /* ── Animations ── */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(16px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ── Responsive ── */
-@media (max-width: 1200px) { .wl-grid { grid-template-columns: repeat(3, 1fr); } }
-@media (max-width: 1024px) { .wl-content { padding-left: 40px; padding-right: 40px; } }
-@media (max-width: 768px) {
-  .wl-hero { padding: 100px 24px 48px; }
-  .wl-content { padding-left: 24px; padding-right: 24px; }
-  .wl-grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 480px) {
-  .wl-grid { gap: 14px; }
-  .wl-card-img { height: 180px; }
+@media (max-width: 600px) {
+  .wl-card { flex-direction: column; align-items: flex-start; }
+  .wl-card-img { width: 100%; height: 200px; }
+  .wl-remove-btn { position: absolute; top: 12px; right: 12px; }
 }

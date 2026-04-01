@@ -29,16 +29,16 @@ function Products() {
   const [loading,        setLoading]        = useState(true);
   const [error,          setError]          = useState("");
 
-  // Initialise from localStorage so counts survive page changes
-  const [wishlist,       setWishlist]       = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
-  const [cart,           setCart]           = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
+  // ✅ FIX: Read from localStorage on init so counts persist across pages
+  const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
+  const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
 
   const [activeCategory, setActiveCategory] = useState("All");
   const [sortBy,         setSortBy]         = useState("default");
   const [addedId,        setAddedId]        = useState(null);
   const [currentPage,    setCurrentPage]    = useState(1);
 
-  // Persist wishlist & cart to localStorage whenever they change
+  // ✅ FIX: Persist wishlist & cart to localStorage whenever they change
   useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
   useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
 
@@ -68,6 +68,11 @@ function Products() {
     };
     fetchProducts();
   }, []);
+
+  // Reset page when search query changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const requireAuth = (action) => {
     if (!isLoggedIn) { navigate("/login"); return; }
@@ -146,16 +151,41 @@ function Products() {
             </select>
           </div>
         </div>
+
+        {/* Result count */}
+        {!loading && !error && (
+          <p className="products-result-count">
+            {filtered.length === 0
+              ? "No products found"
+              : `Showing ${startIdx + 1}–${Math.min(startIdx + ITEMS_PER_PAGE, filtered.length)} of ${filtered.length} products`
+            }
+            {search && <span className="products-search-tag"> for "{search}"</span>}
+          </p>
+        )}
       </section>
 
       {/* PRODUCTS GRID */}
       <section className="products-listing">
         {loading ? (
-          <div className="products-empty"><p>Loading products...</p></div>
+          <div className="products-empty">
+            <div className="products-spinner" />
+            <p>Loading products...</p>
+          </div>
         ) : error ? (
           <div className="products-empty"><p>{error}</p></div>
         ) : filtered.length === 0 ? (
-          <div className="products-empty"><p>No products found!!</p></div>
+          <div className="products-empty">
+            <span className="products-empty-icon">✦</span>
+            <p>No products found!</p>
+            {search && (
+              <button
+                className="products-clear-btn"
+                onClick={() => navigate("/products")}
+              >
+                Clear Search
+              </button>
+            )}
+          </div>
         ) : (
           <div className="products-grid-full">
             {paginated.map((p, i) => (
@@ -171,6 +201,7 @@ function Products() {
                   <button
                     className={`wishlist-btn ${wishlist.includes(p.id) ? "active" : ""}`}
                     onClick={(e) => { e.stopPropagation(); toggleWishlist(p.id); }}
+                    title={wishlist.includes(p.id) ? "Remove from wishlist" : "Add to wishlist"}
                   >
                     {wishlist.includes(p.id) ? "♥" : "♡"}
                   </button>
@@ -195,17 +226,33 @@ function Products() {
       {/* PAGINATION */}
       {totalPages > 1 && (
         <div className="pagination">
-          <button className="page-btn page-arrow" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>‹</button>
+          <button
+            className="page-btn page-arrow"
+            onClick={() => goToPage(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            ‹
+          </button>
           {getPageNumbers().map((page, i) =>
             page === "..." ? (
               <span key={`ellipsis-${i}`} className="page-ellipsis">…</span>
             ) : (
-              <button key={page} className={`page-btn ${currentPage === page ? "active" : ""}`} onClick={() => goToPage(page)}>
+              <button
+                key={page}
+                className={`page-btn ${currentPage === page ? "active" : ""}`}
+                onClick={() => goToPage(page)}
+              >
                 {page}
               </button>
             )
           )}
-          <button className="page-btn page-arrow" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>›</button>
+          <button
+            className="page-btn page-arrow"
+            onClick={() => goToPage(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            ›
+          </button>
         </div>
       )}
 

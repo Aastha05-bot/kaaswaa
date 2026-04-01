@@ -38,7 +38,7 @@ function App() {
             <StaffManagement />
           </ProtectedRoute>
         }/>
-        <Route path="/products/:id" element={<ProductDetail />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
         <Route path="/wishlist" element={
           <ProtectedRoute allowedRoles={["user"]}>
             <Wishlist />
