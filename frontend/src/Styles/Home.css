@@ -1,475 +1,195 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import "../Styles/Home.css";
+import Header from "./Header";
+import Footer from "./Footer";
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+// ✅ Replace with your actual Instagram username
+const INSTAGRAM_USERNAME = "kaaswaacrafts";
+
+function Home() {
+  const navigate = useNavigate();
+
+  const token      = localStorage.getItem("token");
+  const username   = localStorage.getItem("username");
+  const isLoggedIn = !!token;
+
+  const [wishlist,   setWishlist]   = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
+  const [cart,       setCart]       = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
+  const [categories, setCategories] = useState([]);
+  const [products,   setProducts]   = useState([]);
+  const [igTooltip,  setIgTooltip]  = useState(false);
+
+  useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
+  useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data))
+      .catch((err) => console.error("Failed to fetch categories:", err));
+  }, []);
+
+  useEffect(() => {
+    fetch("http://localhost:5000/api/products")
+      .then((res) => res.json())
+      .then((data) => {
+        const mapped = data.map((p) => ({
+          id:       p.product_id,
+          name:     p.product_name,
+          price:    parseFloat(p.price),
+          tag:      p.tag || "",
+          image:    p.image_url || "/placeholder.jpg",
+          category: p.category_name || "",
+        }));
+        const bestsellers = mapped.filter((p) => p.tag === "Bestseller").slice(0, 5);
+        setProducts(bestsellers.length > 0 ? bestsellers : mapped.slice(0, 5));
+      })
+      .catch((err) => console.error("Failed to fetch products:", err));
+  }, []);
+
+  const requireAuth = (action) => {
+    if (!isLoggedIn) { navigate("/login"); return; }
+    action();
+  };
+
+  const toggleWishlist = (id) =>
+    requireAuth(() =>
+      setWishlist((prev) =>
+        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+      )
+    );
+
+  const addToCart = (id) =>
+    requireAuth(() => setCart((prev) => [...prev, id]));
+
+  return (
+    <div className="home-wrapper">
+
+      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+
+      {/* BANNER */}
+      <section className="banner" id="home">
+        <div className="banner-content">
+          <p className="banner-sub">Handcrafted with love</p>
+          <h1 className="banner-title">
+            Crafted with<br /><span>माया</span>
+          </h1>
+          <p className="banner-desc">
+            Unique handmade jewelry and crafts, made with care in every stitch and bead.
+          </p>
+          <div className="banner-btns">
+            <Link to="/products" className="btn-primary">Shop Now</Link>
+            <Link to="/categories" className="btn-outline">Explore</Link>
+          </div>
+        </div>
+        <div className="banner-visual">
+          <div className="banner-circle c1" />
+          <div className="banner-circle c2" />
+          <div className="banner-circle c3" />
+          <div className="banner-blob" />
+        </div>
+      </section>
+
+      {/* CATEGORIES */}
+      <section className="section categories-section" id="categories">
+        <div className="section-header">
+          <h2>Shop by Category</h2>
+        </div>
+        <div className="categories-grid">
+          {categories.length === 0 ? (
+            <p style={{ color: "var(--gray)", textAlign: "center", gridColumn: "1/-1" }}>
+              Loading categories...
+            </p>
+          ) : (
+            categories.map((cat, i) => (
+              <div
+                className="category-card"
+                key={cat.category_id}
+                style={{ animationDelay: `${i * 0.1}s`, cursor: "pointer" }}
+                onClick={() => navigate(`/categories/${cat.category_id}`)}
+              >
+                <p className="cat-name">{cat.category_name}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      {/* BEST SELLING */}
+      <section className="section bestselling-section" id="bestselling">
+        <div className="section-header">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <h2 style={{ margin: 0 }}>Best Selling</h2>
+            <Link to="/products" className="btn-view-all"> View all </Link>
+          </div>
+        </div>
+        <div className="products-grid">
+          {products.length === 0 ? (
+            <p style={{ color: "var(--gray)", gridColumn: "1/-1", textAlign: "center" }}>
+              Loading products...
+            </p>
+          ) : (
+            products.map((p, i) => (
+              <div
+                className="product-card"
+                key={p.id}
+                style={{ animationDelay: `${i * 0.1}s` }}
+              >
+                <div className="product-img" onClick={() => navigate(`/product/${p.id}`)}>
+                  <img src={p.image} alt={p.name} />
+                  {p.tag && <span className="product-tag">{p.tag}</span>}
+                  <button
+                    className={`wishlist-btn ${wishlist.includes(p.id) ? "active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); toggleWishlist(p.id); }}
+                  >
+                    {wishlist.includes(p.id) ? "♥" : "♡"}
+                  </button>
+                </div>
+                <div className="product-info">
+                  <h3 onClick={() => navigate(`/product/${p.id}`)}>{p.name}</h3>
+                  <p className="product-price">Rs. {p.price.toLocaleString()}</p>
+                  <button className="add-cart-btn" onClick={() => addToCart(p.id)}>
+                    Add to Cart
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
+      <Footer />
+
+      {/* ── FLOATING INSTAGRAM BUTTON ── */}
+      <a
+        className="ig-float"
+        href={`https://www.instagram.com/direct/t/17843034852267435/?__pwa=1${INSTAGRAM_USERNAME}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        onMouseEnter={() => setIgTooltip(true)}
+        onMouseLeave={() => setIgTooltip(false)}
+        aria-label="Message us on Instagram"
+      >
+        {/* Tooltip label */}
+        <span className={`ig-tooltip ${igTooltip ? "ig-tooltip--visible" : ""}`}>
+          Message us on Instagram
+        </span>
+
+        {/* Instagram icon */}
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          width="28"
+          height="28"
+          fill="white"
+        >
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+        </svg>
+      </a>
+
+    </div>
+  );
 }
 
-:root {
-  --pink: #e85a8a;
-  --pink-light: #f08fb1;
-  --pink-pale: #fff8f9;
-  --pink-soft: #fce4ec;
-  --dark: #3b3b3b;
-  --gray: #777;
-  --white: #ffffff;
-}
-
-html {
-  scroll-behavior: smooth;
-}
-
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--pink-pale);
-  color: var(--dark);
-}
-
-.home-wrapper {
-  min-height: 100vh;
-}
-
-/* ── BANNER ── */
-.banner {
-  min-height: calc(100vh - 68px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 60px 80px;
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(135deg, #fff8f9 60%, #fce4ec 100%);
-}
-
-.banner-content {
-  max-width: 520px;
-  z-index: 2;
-  animation: fadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.banner-sub {
-  font-size: 25px;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  color: var(--pink-light);
-  font-weight: 500;
-  margin-bottom: 16px;
-}
-
-.banner-title {
-  font-family: 'Playfair Display', serif;
-  font-size: clamp(48px, 6vw, 80px);
-  line-height: 1.1;
-  color: var(--dark);
-  margin-bottom: 20px;
-}
-
-.banner-title span {
-  color: var(--pink);
-  font-style: italic;
-}
-
-.banner-desc {
-  font-size: 25px;
-  color: var(--gray);
-  line-height: 1.7;
-  margin-bottom: 36px;
-  font-weight: 300;
-}
-
-.banner-btns {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.btn-primary {
-  background: var(--pink);
-  color: white;
-  padding: 14px 32px;
-  border-radius: 50px;
-  text-decoration: none;
-  font-size: 25px;
-  font-weight: 500;
-  transition: all 0.3s;
-  box-shadow: 0 8px 24px rgba(232, 90, 138, 0.3);
-}
-
-.btn-primary:hover {
-  background: var(--pink-soft);
-  color: var(--pink);
-  border: 2px solid var(--pink);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(232, 90, 138, 0.4);
-}
-
-.btn-outline {
-  background: none;
-  color: var(--pink);
-  padding: 14px 32px;
-  border-radius: 30px;
-  text-decoration: none;
-  font-size: 25px;
-  font-weight: 500;
-  border: 2px solid var(--pink);
-  transition: all 0.3s;
-}
-
-.btn-outline:hover {
-  background: var(--pink);
-  color: var(--pink-soft);
-  box-shadow: 0 12px 30px rgba(232, 90, 138, 0.4);
-  transform: translateY(-2px);
-}
-
-/* Banner decorative circles */
-.banner-visual {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: 50%;
-  height: 100%;
-  pointer-events: none;
-}
-
-.banner-circle {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.15;
-}
-
-.c1 {
-  width: 400px;
-  height: 400px;
-  background: var(--pink);
-  top: -100px;
-  right: -100px;
-}
-
-.c2 {
-  width: 250px;
-  height: 250px;
-  background: var(--pink-light);
-  bottom: 50px;
-  right: 150px;
-}
-
-.c3 {
-  width: 150px;
-  height: 150px;
-  background: var(--pink);
-  top: 40%;
-  right: 40%;
-}
-
-.banner-blob {
-  position: absolute;
-  width: 500px;
-  height: 500px;
-  border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%;
-  background: rgba(240, 143, 177, 0.12);
-  top: 50%;
-  right: 5%;
-  transform: translateY(-50%);
-  animation: cubic-bezier(0.075, 0.82, 0.165, 1) 0.3s ease-in-out 0s 1 normal none;
-}
-
-/*  SECTIONS  */
-.section {
-  padding: 60px 40px;
-}
-
-.section-header {
-  text-align: center;
-  margin-bottom: 80px;
-}
-
-.section-header h2 {
-  font-family: 'Playfair Display', sans-serif;
-  font-size: 55px;
-  color: var(--dark);
-  margin-bottom: 8px;
-  text-decoration: none;
-}
-
-.section-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  margin-bottom: 8px;
-}
-
-.section-title-row h2 {
-  margin: 0;
-}
-
-.btn-view-all {
-  position: absolute;
-  right: 0;
-  font-size: 21px;
-  color: var(--dark);
-  text-decoration: underline;
-  font-weight: 500;
-  opacity: 0.7;
-  transition: all 0.2s;
-}
-
-.btn-view-all:hover {
-  opacity: 1;
-  color: var(--pink);
-}
-
-/*  CATEGORIES  */
-.categories-section {
-  background: white;
-}
-
-.categories-grid {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  padding: 0 40px;
-  gap: 16px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.category-card {
-  background: var(--pink-soft);
-  border: 1.5px solid rgba(232, 90, 138, 0.15);
-  border-radius: 16px;
-  padding: 24px 12px;
-  text-align: center;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.category-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 16px 40px rgba(235, 115, 155, 0.373);
-  background: var(--pink-soft);
-}
-
-.cat-name {
-  font-size: 25px;
-  font-weight: 500;
-  color: var(--dark);
-  letter-spacing: 0.3px;
-}
-
-/*  PRODUCTS  */
-.bestselling-section {
-  background: var(--pink-pale);
-  padding: 100px 40px;
-}
-
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 16px; 
-  padding: 10px;
-}
-
-.product-card {
-  background: white;
-  border-radius: 16px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid rgba(232, 90, 138, 0.1);
-  transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-  animation: fadeUp 0.6s both;
-  width: 100%;
-  max-width: 280px;
-}
-
-.product-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 50px rgba(232, 90, 138, 0.15);
-}
-
-.product-img {
-  position: relative;
-  width: 100%;
-  height: 300px;
-  aspect-ratio: 3/4;
-  overflow: hidden;
-  background: var(--pink-soft);
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.product-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-  display: block;
-}
-
-.product-tag {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: var(--pink);
-  color: white;
-  font-size: 18px;
-  font-weight: 550;
-  padding: 4px 10px;
-  border-radius: 20px;
-  letter-spacing: 0.5px;
-}
-
-.wishlist-btn {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  background: white;
-  border: none;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  font-size: 30px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
-  color: var(--gray);
-}
-
-.wishlist-btn:hover,
-.wishlist-btn.active {
-  color: var(--pink);
-  transform: scale(1.1);
-}
-
-.product-info {
-  padding: 16px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.product-info h3 {
-  font-size: 20px;
-  font-weight: 550;
-  margin-bottom: 6px;
-  color: var(--dark);
-}
-
-.product-price {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--pink);
-  margin-bottom: 12px;
-}
-
-.add-cart-btn {
-  width: 100%;
-  background: var(--pink-pale);
-  border: 1.5px solid var(--pink);
-  color: var(--pink);
-  padding: 9px;
-  border-radius: 25px;
-  font-size: 20px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: 'DM Sans', sans-serif;
-}
-
-.add-cart-btn:hover {
-  background: var(--pink);
-  color: white;
-}
-
-/*  ANIMATIONS  */
-@keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes morph {
-  0%, 100% {
-    border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%;
-  }
-  50% {
-    border-radius: 30% 70% 40% 60% / 60% 40% 60% 40%;
-  }
-}
-
-/*  RESPONSIVE  */
-@media (max-width: 1024px) {
-  .banner {
-    padding: 60px 40px;
-  }
-
-  .section {
-    padding: 60px 40px;
-  }
-
-  .products-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 768px) {
-  .banner {
-    flex-direction: column;
-    padding: 40px 24px;
-    min-height: auto;
-    padding-top: 60px;
-  }
-
-  .banner-visual {
-    display: none;
-  }
-
-  .banner-content {
-    max-width: 100%;
-  }
-
-  .section {
-    padding: 50px 24px;
-  }
-
-  .categories-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .products-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 480px) {
-  .products-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .categories-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .banner-title {
-    font-size: 40px;
-  }
-}
+export default Home;
