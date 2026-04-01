@@ -187,7 +187,7 @@
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   transition: all 0.2s;
   flex-shrink: 0;
-  /* align-self: center; */
+  align-self: center;
 }
 .wl-remove-btn:hover { background: var(--pink); color: #fff; border-color: var(--pink); }
 
