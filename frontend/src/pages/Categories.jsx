@@ -15,8 +15,8 @@ function Categories() {
   const [categories,     setCategories]     = useState([]);
   const [products,       setProducts]       = useState([]);
   const [activeCategory, setActiveCategory] = useState(id ? parseInt(id) : 0); // 0 = All
-  const [wishlist,       setWishlist]       = useState([]);
-  const [cart,           setCart]           = useState([]);
+  const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
+  const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
   const [addedId,        setAddedId]        = useState(null);
   const [loadingCats,    setLoadingCats]    = useState(true);
   const [loadingProds,   setLoadingProds]   = useState(true);
