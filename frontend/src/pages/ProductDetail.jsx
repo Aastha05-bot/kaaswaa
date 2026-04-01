@@ -283,9 +283,6 @@ function ProductDetail() {
           <div className="pd-reco">
             <div className="pd-reco-header">
               <h2>You Might Also Like</h2>
-              <p className="pd-reco-sub">
-                More from <strong>{product.category_name}</strong>
-              </p>
             </div>
 
             <div className="pd-reco-grid">

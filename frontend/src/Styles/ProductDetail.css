@@ -369,18 +369,6 @@
   margin: 0;
 }
 
-.pd-reco-sub {
-  font-size: 14px;
-  color: var(--gray);
-  font-weight: 300;
-  margin: 0;
-}
-
-.pd-reco-sub strong {
-  color: var(--pink);
-  font-weight: 500;
-}
-
 /* ── 4-column card grid ── */
 .pd-reco-grid {
   display: grid;
