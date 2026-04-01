@@ -4,8 +4,8 @@ import "../Styles/Home.css";
 import Header from "./Header";
 import Footer from "./Footer";
 
-// ✅ Replace with your actual Instagram username
-const INSTAGRAM_USERNAME = "kaaswaacrafts";
+
+const INSTAGRAM_USERNAME = "kaaswaa";
 
 function Home() {
   const navigate = useNavigate();
