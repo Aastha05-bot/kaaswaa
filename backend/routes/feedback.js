@@ -1,9 +1,9 @@
-// routes/feedback.js
-const express = require("express");
-const router  = express.Router();
-const db      = require("../db");
+const express     = require("express");
+const router      = express.Router();
+const db          = require("../db");
+const verifyToken = require("../middleware/auth");
 
-// GET /api/feedback/:product_id — fetch reviews for a product (no auth needed)
+// GET /api/feedback/:product_id — public, no auth needed
 router.get("/:product_id", (req, res) => {
   const { product_id } = req.params;
 
@@ -30,8 +30,8 @@ router.get("/:product_id", (req, res) => {
   );
 });
 
-// POST /api/feedback — submit a review (auth required via verifyToken middleware)
-router.post("/", (req, res) => {
+// POST /api/feedback — auth required
+router.post("/", verifyToken, (req, res) => {
   const user_id = req.user?.id;
   if (!user_id) return res.status(401).json({ message: "Unauthorized" });
 
@@ -71,8 +71,8 @@ router.post("/", (req, res) => {
   );
 });
 
-// DELETE /api/feedback/:feedback_id — delete own review (auth required)
-router.delete("/:feedback_id", (req, res) => {
+// DELETE /api/feedback/:feedback_id — auth required
+router.delete("/:feedback_id", verifyToken, (req, res) => {
   const user_id = req.user?.id;
   if (!user_id) return res.status(401).json({ message: "Unauthorized" });
 
