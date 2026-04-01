@@ -19,7 +19,7 @@ app.use("/api", authRoutes);
 app.use("/api",productRoutes);
 app.use("/api",categoryRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/feedback",verifyToken, feedbackRoutes);
+app.use("/api/feedback", feedbackRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 
 app.get("/", (req, res) => {
