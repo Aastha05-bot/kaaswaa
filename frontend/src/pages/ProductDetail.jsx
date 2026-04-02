@@ -221,31 +221,59 @@ function ProductDetail() {
           </div>
         </div>
 
-        {/* ── Reviews ── */}
+       {/* ── Reviews ── */}
         <div className="pd-reviews">
-          <h2>Reviews {reviews.length > 0 && `(${reviews.length})`}</h2>
+          <h2 className="pd-reviews-title">Rating &amp; Review</h2>
+
+          {/* Summary bar */}
+          {reviews.length > 0 && (() => {
+            const counts = {5:0,4:0,3:0,2:0,1:0};
+            reviews.forEach(r => counts[r.ratings]++);
+            return (
+              <div className="pd-rating-summary">
+                <div className="pd-score-block">
+                  <span className="pd-big-score">{avgRating}</span>
+                  <span className="pd-score-star">★</span>
+                  <span className="pd-score-count">{reviews.length} Rating{reviews.length !== 1 ? "s" : ""}</span>
+                </div>
+                <div className="pd-bars">
+                  {[5,4,3,2,1].map(n => {
+                    const pct = Math.round((counts[n] / reviews.length) * 100);
+                    return (
+                      <div key={n} className="pd-bar-row">
+                        <span className="pd-bar-label">{n}</span>
+                        <span className="pd-bar-star">★</span>
+                        <div className="pd-bar-track">
+                          <div className={`pd-bar-fill ${n <= 2 ? "low" : ""}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="pd-bar-count">{counts[n]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Write review */}
           <div className="pd-review-form">
             <h3>Leave a Review</h3>
             <form onSubmit={handleReviewSubmit}>
               <div className="pd-stars">
-                {[1, 2, 3, 4, 5].map((star) => (
+                {[1,2,3,4,5].map(star => (
                   <span
                     key={star}
                     className={`pd-star ${star <= (hoverRating || rating) ? "filled" : ""}`}
                     onClick={() => setRating(star)}
                     onMouseEnter={() => setHoverRating(star)}
                     onMouseLeave={() => setHoverRating(0)}
-                  >
-                    ★
-                  </span>
+                  >★</span>
                 ))}
               </div>
               <textarea
                 placeholder="Write your review (optional)..."
                 value={comment}
-                onChange={(e) => setComment(e.target.value)}
+                onChange={e => setComment(e.target.value)}
                 rows={3}
               />
               {reviewMsg && <p className="pd-review-msg">{reviewMsg}</p>}
@@ -255,25 +283,32 @@ function ProductDetail() {
             </form>
           </div>
 
-          {/* Review list */}
+          {/* Customer Reviews */}
+          <h3 className="pd-section-title">Customer Review</h3>
           <div className="pd-review-list">
             {reviews.length === 0 ? (
               <p className="pd-no-reviews">No reviews yet. Be the first!</p>
             ) : (
-              reviews.map((r) => (
-                <div key={r.feedback_id} className="pd-review-card">
-                  <div className="pd-review-header">
-                    <span className="pd-reviewer">{r.full_name}</span>
-                    <span className="pd-review-stars">
-                      {"★".repeat(r.ratings)}{"☆".repeat(5 - r.ratings)}
-                    </span>
-                    <span className="pd-review-date">
-                      {new Date(r.feedback_date).toLocaleDateString()}
-                    </span>
+              reviews.map(r => {
+                const initials = r.full_name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                return (
+                  <div key={r.feedback_id} className="pd-review-card">
+                    <div className="pd-review-header">
+                      <div className="pd-avatar">{initials}</div>
+                      <div className="pd-review-meta">
+                        <div className="pd-review-stars">{"★".repeat(r.ratings)}{"☆".repeat(5 - r.ratings)}</div>
+                        <span className="pd-reviewer">{r.full_name}</span>
+                      </div>
+                      <span className="pd-review-date">{new Date(r.feedback_date).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"2-digit"})}</span>
+                    </div>
+                    {r.comment && <p className="pd-review-comment">{r.comment}</p>}
+                    <div className="pd-review-actions">
+                      <button className="pd-action-btn">👍 0</button>
+                      <button className="pd-action-btn">👎 0</button>
+                    </div>
                   </div>
-                  {r.comment && <p className="pd-review-comment">{r.comment}</p>}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

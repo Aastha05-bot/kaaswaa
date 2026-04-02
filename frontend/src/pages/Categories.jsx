@@ -6,7 +6,7 @@ import Footer from "./Footer";
 
 function Categories() {
   const navigate = useNavigate();
-  const { id } = useParams(); // optional — if coming from /categories/:id
+  const { id } = useParams();
 
   const token      = localStorage.getItem("token");
   const username   = localStorage.getItem("username");
@@ -14,12 +14,22 @@ function Categories() {
 
   const [categories,     setCategories]     = useState([]);
   const [products,       setProducts]       = useState([]);
-  const [activeCategory, setActiveCategory] = useState(id ? parseInt(id) : 0); // 0 = All
+  const [activeCategory, setActiveCategory] = useState(id ? parseInt(id) : 0);
   const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
   const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
   const [addedId,        setAddedId]        = useState(null);
   const [loadingCats,    setLoadingCats]    = useState(true);
   const [loadingProds,   setLoadingProds]   = useState(true);
+
+  // ── Sync wishlist to localStorage ─────────────────────
+  useEffect(() => {
+    localStorage.setItem("wishlist", JSON.stringify(wishlist));
+  }, [wishlist]);
+
+  // ── Sync cart to localStorage ──────────────────────────
+  useEffect(() => {
+    localStorage.setItem("cart", JSON.stringify(cart));
+  }, [cart]);
 
   // ── Fetch categories ───────────────────────────────────
   useEffect(() => {
@@ -49,7 +59,6 @@ function Categories() {
           image:    p.image_url || "/placeholder.jpg",
           category: p.category_name || "",
         }));
-        console.log("Products loaded:", mapped);
         setProducts(mapped);
         setLoadingProds(false);
       })
@@ -65,17 +74,27 @@ function Categories() {
     action();
   };
 
-  const toggleWishlist = (id) =>
+  // ── Wishlist toggle ────────────────────────────────────
+  const toggleWishlist = (productId) =>
     requireAuth(() =>
       setWishlist((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+        prev.includes(productId) ? prev.filter((i) => i !== productId) : [...prev, productId]
       )
     );
 
-  const addToCart = (id) =>
+  // ── Add to cart (with quantity tracking) ──────────────
+  const addToCart = (productId) =>
     requireAuth(() => {
-      setCart((prev) => [...prev, id]);
-      setAddedId(id);
+      setCart((prev) => {
+        const exists = prev.find((item) => item.id === productId);
+        if (exists) {
+          return prev.map((item) =>
+            item.id === productId ? { ...item, qty: item.qty + 1 } : item
+          );
+        }
+        return [...prev, { id: productId, qty: 1 }];
+      });
+      setAddedId(productId);
       setTimeout(() => setAddedId(null), 1500);
     });
 
@@ -88,9 +107,20 @@ function Categories() {
     ? products
     : products.filter((p) => p.category === activeCategoryName);
 
+  // ── Cart item count (sum of quantities) ───────────────
+  const cartCount = cart.reduce((sum, item) =>
+    typeof item === "object" ? sum + item.qty : sum + 1, 0
+  );
+
   return (
     <div className="categories-page-wrapper">
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header
+        wishlist={wishlist}
+        cart={cart}
+        cartCount={cartCount}
+        isLoggedIn={isLoggedIn}
+        username={username}
+      />
 
       {/* ── HERO ── */}
       <section className="categories-hero">
@@ -108,14 +138,12 @@ function Categories() {
               <li className="sidebar-loading">Loading...</li>
             ) : (
               <>
-                {/* All option */}
                 <li
                   className={`sidebar-item ${activeCategory === 0 ? "active" : ""}`}
                   onClick={() => setActiveCategory(0)}
                 >
                   All
                 </li>
-                {/* Category list from DB */}
                 {categories.map((cat) => (
                   <li
                     key={cat.category_id}
@@ -134,7 +162,6 @@ function Categories() {
         <main className="categories-main">
           <div className="categories-main-header">
             <h2>{activeCategoryName}</h2>
-
           </div>
 
           {loadingProds ? (
