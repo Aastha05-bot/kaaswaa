@@ -15,8 +15,6 @@ function Cart() {
   const [cart,      setCart]      = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
   const [products,  setProducts]  = useState([]);
   const [loading,   setLoading]   = useState(true);
-  const [placing,   setPlacing]   = useState(false);
-  const [ordered,   setOrdered]   = useState(false);
   const [selected,  setSelected]  = useState({});
 
   useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
@@ -89,71 +87,18 @@ function Cart() {
     setWishlist((prev) => prev.includes(id) ? prev : [...prev, id]);
   };
 
-  /* ── Place order → POST /api/cart ── */
-  const placeOrder = async () => {
+  const handleProceed = () => {
     if (selectedItems.length === 0) {
-      alert("Please select at least one item to place an order.");
+      alert("Please select at least one item to proceed.");
       return;
     }
-    try {
-      setPlacing(true);
-      const userId = localStorage.getItem("user_id");
-
-      // Build items array for the backend
-      const items = selectedItems.map(({ product, qty }) => ({
-        product_id: product.id,
-        quantity:   qty,
-        price:      product.price,
-      }));
-
-      const res = await fetch("http://localhost:5000/api/cart", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          user_id:      userId,
-          total_amount: total,
-          items,
-        }),
-      });
-
-      if (!res.ok) throw new Error();
-
-      // Remove only the selected items from cart
-      const selectedIds = new Set(selectedItems.map((i) => i.product.id));
-      setCart((prev) => prev.filter((id) => !selectedIds.has(id)));
-      setOrdered(true);
-    } catch {
-      alert("Could not place order. Please try again.");
-    } finally {
-      setPlacing(false);
-    }
+    // Save selected items + totals for checkout page
+    localStorage.setItem("checkout_items",    JSON.stringify(selectedItems));
+    localStorage.setItem("checkout_subtotal", subtotal);
+    localStorage.setItem("checkout_shipping", shipping);
+    localStorage.setItem("checkout_total",    total);
+    navigate("/order-confirm");
   };
-
-  /* ── Success screen ── */
-  if (ordered) {
-    return (
-      <div className="cart-page">
-        <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
-        <div className="cart-success">
-          <span className="cart-success-icon">✓</span>
-          <h2>Order Placed!</h2>
-          <p>Thank you, {username}! Your order has been received.</p>
-          <div className="cart-success-actions">
-            <button className="cart-continue-btn" onClick={() => navigate("/products")}>
-              Continue Shopping
-            </button>
-            <button className="cart-orders-btn" onClick={() => navigate("/orders")}>
-              View My Orders
-            </button>
-          </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  }
 
   return (
     <div className="cart-page">
@@ -219,10 +164,10 @@ function Cart() {
 
                   <div className="cart-item-actions">
                     <button className="cart-action-link" onClick={() => moveToWishlist(product.id)}>
-                      ♡ Save for later
+                      Save for later
                     </button>
                     <button className="cart-action-link danger" onClick={() => removeItem(product.id)}>
-                      ✕ Remove
+                      Remove
                     </button>
                   </div>
                 </div>
@@ -264,10 +209,13 @@ function Cart() {
               </div>
             )}
 
-            <button onClick={() => navigate("/order-confirm")}
-  disabled={selectedItems.length === 0}>
-  Proceed to Confirm ({selectedItems.length})
-</button>
+            <button
+              className="cart-proceed-btn"
+              onClick={handleProceed}
+              disabled={selectedItems.length === 0}
+            >
+              Proceed to Checkout ({selectedItems.length})
+            </button>
 
             <button className="cart-continue-link" onClick={() => navigate("/products")}>
               ← Continue Shopping
