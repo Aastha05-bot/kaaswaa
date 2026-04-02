@@ -12,6 +12,7 @@ const recommendationRoutes = require("./routes/recommendations");
 const cartRoutes = require("./routes/cart");
 const orderRoutes = require("./routes/orders");
 const wishlistRoutes = require("./routes/wishlist");
+const paymentRoutes = require("./routes/payments");
 
 const app = express();
 
@@ -27,6 +28,7 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use("/api", cartRoutes);
 app.use("/api", orderRoutes);
 app.use("/api", wishlistRoutes);
+app.use("/api", paymentRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Kaa Swaa backend is running!" });

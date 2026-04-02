@@ -3,59 +3,185 @@ const router      = express.Router();
 const db          = require("../db");
 const verifyToken = require("../middleware/auth");
 
-// ── POST /api/orders ─────────────────────────────────────
-// Creates an order in `orders` table and line items in `cart_items`
-// Body: { user_id, total_amount, items: [{ product_id, quantity, price }] }
+/*
+  Requires an order_items table (if you don't have it, run this):
+
+  CREATE TABLE order_items (
+    order_item_id INT(11)       NOT NULL AUTO_INCREMENT,
+    order_id      INT(11)       NOT NULL,
+    product_id    INT(11)       NOT NULL,
+    quantity      INT(11)       NOT NULL DEFAULT 1,
+    price         DECIMAL(10,2) NOT NULL,
+    PRIMARY KEY (order_item_id),
+    KEY order_id   (order_id),
+    KEY product_id (product_id),
+    FOREIGN KEY (order_id)    REFERENCES orders(order_id)     ON DELETE CASCADE,
+    FOREIGN KEY (product_id)  REFERENCES product(product_id)  ON DELETE CASCADE
+  );
+
+  Also requires a shipping_info table (if you don't have it):
+
+  CREATE TABLE shipping_info (
+    shipping_id INT(11)      NOT NULL AUTO_INCREMENT,
+    order_id    INT(11)      NOT NULL UNIQUE,
+    phone       VARCHAR(20)  NOT NULL,
+    city        VARCHAR(100) NOT NULL,
+    address     VARCHAR(255) NOT NULL,
+    landmark    VARCHAR(255),
+    note        TEXT,
+    PRIMARY KEY (shipping_id),
+    FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
+  );
+*/
+
+// ── POST /api/orders  (protected) ────────────────────────
+// Places a new order. For COD this is the final step.
+// For eSewa/card, payment is confirmed separately via /api/payments.
+//
+// body: {
+//   user_id, total_amount, phone, city, address, landmark, note,
+//   payment_method: "cod"|"esewa"|"card",
+//   items: [{ product_id, quantity, price }]
+// }
 router.post("/orders", verifyToken, (req, res) => {
-  const { user_id, total_amount, items = [] } = req.body;
+  const {
+    user_id, total_amount, phone, city, address,
+    landmark = "", note = "", payment_method, items,
+  } = req.body;
 
-  if (!user_id)            return res.status(400).json({ message: "user_id is required." });
-  if (items.length === 0)  return res.status(400).json({ message: "No items provided." });
+  if (!user_id || !total_amount || !phone || !city || !address || !payment_method) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+  if (!items || items.length === 0) {
+    return res.status(400).json({ message: "Order must have at least one item." });
+  }
 
-  // Step 1: Insert into orders table
-  const orderSql = "INSERT INTO orders (user_id, total, order_status) VALUES (?, ?, 'pending')";
-  db.query(orderSql, [user_id, total_amount || 0], (err, orderResult) => {
+  // 1. Insert into orders
+  const orderSql = `
+    INSERT INTO orders (user_id, total, order_status)
+    VALUES (?, ?, 'pending')
+  `;
+  db.query(orderSql, [user_id, total_amount], (err, orderResult) => {
     if (err) {
       console.error("Order insert error:", err);
-      return res.status(500).json({ message: "Failed to place order." });
+      return res.status(500).json({ message: "Failed to create order." });
     }
 
     const orderId = orderResult.insertId;
 
-    // Step 2: Insert line items into cart_items table
-    // cart_items: cart_id (reused as order_id here), product_id, quantity
-    const itemValues = items.map((item) => [orderId, item.product_id, item.quantity || 1]);
-
+    // 2. Insert order_items
+    const itemValues = items.map((i) => [orderId, i.product_id, i.quantity, i.price]);
     db.query(
-      "INSERT INTO cart_items (cart_id, product_id, quantity) VALUES ?",
+      "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ?",
       [itemValues],
       (err2) => {
         if (err2) {
-          console.error("cart_items insert error:", err2);
-          // Order was created — still return success
+          console.error("Order items insert error:", err2);
+          return res.status(500).json({ message: "Failed to save order items." });
         }
-        res.status(201).json({ message: "Order placed.", order_id: orderId });
+
+        // 3. Insert shipping_info
+        const shippingSql = `
+          INSERT INTO shipping_info (order_id, phone, city, address, landmark, note)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `;
+        db.query(shippingSql, [orderId, phone, city, address, landmark, note], (err3) => {
+          if (err3) {
+            console.error("Shipping info insert error:", err3);
+            // Non-fatal — order is still placed
+          }
+
+          // 4. If COD, insert payment record immediately
+          if (payment_method === "cod") {
+            db.query(
+              "INSERT INTO payments (order_id, payment_method) VALUES (?, 'cash')",
+              [orderId],
+              (err4) => {
+                if (err4) console.error("Payment insert error (COD):", err4);
+              }
+            );
+          }
+
+          res.status(201).json({
+            message: "Order placed successfully.",
+            order_id: orderId,
+          });
+        });
       }
     );
   });
 });
 
-// ── GET /api/orders/:userId ───────────────────────────────
-// Fetch all orders for a user
+// ── GET /api/orders/:userId  (protected) ─────────────────
 router.get("/orders/:userId", verifyToken, (req, res) => {
-  if (parseInt(req.params.userId) !== req.user.user_id) {
+  if (parseInt(req.params.userId) !== req.user.id) {
     return res.status(403).json({ message: "Forbidden." });
   }
 
   const sql = `
-    SELECT order_id, user_id, order_date, order_status, total
-    FROM orders
-    WHERE user_id = ?
-    ORDER BY order_date DESC
+    SELECT o.order_id, o.order_date, o.order_status, o.total,
+           s.city, s.address, s.phone
+    FROM orders o
+    LEFT JOIN shipping_info s ON o.order_id = s.order_id
+    WHERE o.user_id = ?
+    ORDER BY o.order_date DESC
   `;
-  db.query(sql, [req.params.userId], (err, results) => {
+  db.query(sql, [req.params.userId], (err, orders) => {
     if (err) return res.status(500).json({ message: "Failed to fetch orders." });
-    res.json(results);
+
+    if (orders.length === 0) return res.json([]);
+
+    // Fetch items for all orders in one query
+    const orderIds = orders.map((o) => o.order_id);
+    const itemsSql = `
+      SELECT oi.order_id, oi.quantity, oi.price,
+             p.product_name, p.image_url
+      FROM order_items oi
+      JOIN product p ON oi.product_id = p.product_id
+      WHERE oi.order_id IN (?)
+    `;
+    db.query(itemsSql, [orderIds], (err2, items) => {
+      if (err2) return res.status(500).json({ message: "Failed to fetch order items." });
+
+      const itemsByOrder = {};
+      items.forEach((item) => {
+        if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+        itemsByOrder[item.order_id].push(item);
+      });
+
+      const result = orders.map((o) => ({
+        ...o,
+        items: itemsByOrder[o.order_id] || [],
+      }));
+
+      res.json(result);
+    });
+  });
+});
+
+// ── GET /api/orders/detail/:orderId  (protected) ─────────
+router.get("/orders/detail/:orderId", verifyToken, (req, res) => {
+  const orderId = req.params.orderId;
+
+  db.query("SELECT * FROM orders WHERE order_id = ?", [orderId], (err, orders) => {
+    if (err || orders.length === 0) return res.status(404).json({ message: "Order not found." });
+
+    const order = orders[0];
+    if (order.user_id !== req.user.id) {
+      return res.status(403).json({ message: "Forbidden." });
+    }
+
+    db.query(
+      `SELECT oi.*, p.product_name, p.image_url
+       FROM order_items oi
+       JOIN product p ON oi.product_id = p.product_id
+       WHERE oi.order_id = ?`,
+      [orderId],
+      (err2, items) => {
+        if (err2) return res.status(500).json({ message: "Failed to fetch items." });
+        res.json({ ...order, items });
+      }
+    );
   });
 });
 

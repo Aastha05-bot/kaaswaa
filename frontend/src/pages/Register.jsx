@@ -11,6 +11,8 @@ function Register() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -23,8 +25,8 @@ function Register() {
       setError("Password must be at least 6 characters");
       return;
     }
-    if (!email.endsWith("@gmail.com")) {
-      setError("Please use a valid Gmail address");
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
       return;
     }
 

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { ShopContext } from "../Context/ShopContext";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/Wishlist.css";
@@ -11,67 +12,31 @@ function Wishlist() {
   const username   = localStorage.getItem("username");
   const isLoggedIn = !!token;
 
-  const [wishlist,  setWishlist]  = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
-  const [cart,      setCart]      = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
-  const [products,  setProducts]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [addedId,   setAddedId]   = useState(null);
-
-  /* persist */
-  useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
-  useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
+  const { wishlist, loading: ctxLoading, addToCart, toggleWishlist } = useContext(ShopContext);
+  const [addedId, setAddedId] = useState(null);
 
   /* redirect if not logged in */
   useEffect(() => { if (!isLoggedIn) navigate("/login"); }, [isLoggedIn, navigate]);
 
-  /* fetch all products, then filter to wishlist IDs */
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const res  = await fetch("http://localhost:5000/api/products");
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        const mapped = (Array.isArray(data) ? data : []).map((p) => ({
-          id:          p.product_id,
-          name:        p.product_name,
-          price:       parseFloat(p.price),
-          category:    p.category_name || "General",
-          tag:         p.tag || "",
-          image:       p.image_url || "/placeholder.jpg",
-          description: p.description || "",
-        }));
-        setProducts(mapped);
-      } catch { /* silent */ }
-      finally { setLoading(false); }
-    };
-    fetchProducts();
-  }, []);
-
-  const wishlistItems = products.filter((p) => wishlist.includes(p.id));
-
-  const removeFromWishlist = (id) =>
-    setWishlist((prev) => prev.filter((i) => i !== id));
-
-  const addToCart = (id) => {
-    setCart((prev) => [...prev, id]);
+  const handleAddToCart = (id) => {
+    addToCart(id, 1);
     setAddedId(id);
     setTimeout(() => setAddedId(null), 1500);
   };
 
   const moveToCart = (id) => {
-    addToCart(id);
-    removeFromWishlist(id);
+    handleAddToCart(id);
+    toggleWishlist(id);
   };
 
   return (
     <div className="wl-page">
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header isLoggedIn={isLoggedIn} username={username} />
 
       <div className="wl-content">
-        {loading ? (
+        {ctxLoading ? (
           <div className="wl-empty"><div className="wl-spinner" /></div>
-        ) : wishlistItems.length === 0 ? (
+        ) : wishlist.length === 0 ? (
           <div className="wl-empty">
             <span className="wl-empty-icon">♡</span>
             <h3>Your wishlist is empty</h3>
@@ -82,35 +47,32 @@ function Wishlist() {
           </div>
         ) : (
           <div className="wl-list">
-            {wishlistItems.map((p, i) => (
+            {wishlist.map((p, i) => (
               <div
                 className="wl-card"
-                key={p.id}
+                key={p.wishlist_id || p.product_id}
                 style={{ animationDelay: `${i * 0.07}s` }}
               >
                 {/* Image */}
-                <div className="wl-card-img" onClick={() => navigate(`/product/${p.id}`)}>
-                  <img src={p.image} alt={p.name} />
+                <div className="wl-card-img" onClick={() => navigate(`/product/${p.product_id}`)}>
+                  <img src={p.image_url || "/placeholder.jpg"} alt={p.product_name} />
                   {p.tag && <span className="wl-tag">{p.tag}</span>}
                 </div>
 
                 {/* Details */}
                 <div className="wl-card-body">
-                  <p className="wl-cat">{p.category}</p>
-                  <h3 onClick={() => navigate(`/product/${p.id}`)}>{p.name}</h3>
-                  {p.description && (
-                    <p className="wl-desc">{p.description}</p>
-                  )}
-                  <p className="wl-price">Rs. {p.price.toLocaleString()}</p>
+                  <p className="wl-cat">{p.category_name || "General"}</p>
+                  <h3 onClick={() => navigate(`/product/${p.product_id}`)}>{p.product_name}</h3>
+                  <p className="wl-price">Rs. {Number(p.price || 0).toLocaleString()}</p>
 
                   <div className="wl-actions">
                     <button
-                      className={`wl-cart-btn ${addedId === p.id ? "added" : ""}`}
-                      onClick={() => addToCart(p.id)}
+                      className={`wl-cart-btn ${addedId === p.product_id ? "added" : ""}`}
+                      onClick={() => handleAddToCart(p.product_id)}
                     >
-                      {addedId === p.id ? "✓ Added!" : "Add to Cart"}
+                      {addedId === p.product_id ? "✓ Added!" : "Add to Cart"}
                     </button>
-                    <button className="wl-move-btn" onClick={() => moveToCart(p.id)}>
+                    <button className="wl-move-btn" onClick={() => moveToCart(p.product_id)}>
                       Move to Cart
                     </button>
                   </div>
@@ -119,7 +81,7 @@ function Wishlist() {
                 {/* Remove button on the right */}
                 <button
                   className="wl-remove-btn"
-                  onClick={() => removeFromWishlist(p.id)}
+                  onClick={() => toggleWishlist(p.product_id)}
                   title="Remove from wishlist"
                 >
                   ✕

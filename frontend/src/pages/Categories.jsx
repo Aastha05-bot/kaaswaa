@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ShopContext } from "../Context/ShopContext";
 import "../Styles/Categories.css";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -15,21 +16,10 @@ function Categories() {
   const [categories,     setCategories]     = useState([]);
   const [products,       setProducts]       = useState([]);
   const [activeCategory, setActiveCategory] = useState(id ? parseInt(id) : 0);
-  const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
-  const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
+  const { wishlist, addToCart, toggleWishlist, cartCount } = useContext(ShopContext);
   const [addedId,        setAddedId]        = useState(null);
   const [loadingCats,    setLoadingCats]    = useState(true);
   const [loadingProds,   setLoadingProds]   = useState(true);
-
-  // ── Sync wishlist to localStorage ─────────────────────
-  useEffect(() => {
-    localStorage.setItem("wishlist", JSON.stringify(wishlist));
-  }, [wishlist]);
-
-  // ── Sync cart to localStorage ──────────────────────────
-  useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
-  }, [cart]);
 
   // ── Fetch categories ───────────────────────────────────
   useEffect(() => {
@@ -75,25 +65,13 @@ function Categories() {
   };
 
   // ── Wishlist toggle ────────────────────────────────────
-  const toggleWishlist = (productId) =>
-    requireAuth(() =>
-      setWishlist((prev) =>
-        prev.includes(productId) ? prev.filter((i) => i !== productId) : [...prev, productId]
-      )
-    );
+  const handleToggleWishlist = (productId) =>
+    requireAuth(() => toggleWishlist(productId));
 
   // ── Add to cart (with quantity tracking) ──────────────
-  const addToCart = (productId) =>
+  const handleAddToCart = (productId) =>
     requireAuth(() => {
-      setCart((prev) => {
-        const exists = prev.find((item) => item.id === productId);
-        if (exists) {
-          return prev.map((item) =>
-            item.id === productId ? { ...item, qty: item.qty + 1 } : item
-          );
-        }
-        return [...prev, { id: productId, qty: 1 }];
-      });
+      addToCart(productId, 1);
       setAddedId(productId);
       setTimeout(() => setAddedId(null), 1500);
     });
@@ -107,17 +85,9 @@ function Categories() {
     ? products
     : products.filter((p) => p.category === activeCategoryName);
 
-  // ── Cart item count (sum of quantities) ───────────────
-  const cartCount = cart.reduce((sum, item) =>
-    typeof item === "object" ? sum + item.qty : sum + 1, 0
-  );
-
   return (
     <div className="categories-page-wrapper">
       <Header
-        wishlist={wishlist}
-        cart={cart}
-        cartCount={cartCount}
         isLoggedIn={isLoggedIn}
         username={username}
       />
@@ -182,10 +152,10 @@ function Categories() {
                     <img src={p.image} alt={p.name} />
                     {p.tag && <span className="product-tag">{p.tag}</span>}
                     <button
-                      className={`wishlist-btn ${wishlist.includes(p.id) ? "active" : ""}`}
-                      onClick={(e) => { e.stopPropagation(); toggleWishlist(p.id); }}
+                      className={`wishlist-btn ${wishlist.some(w => w.product_id === p.id) ? "active" : ""}`}
+                      onClick={(e) => { e.stopPropagation(); handleToggleWishlist(p.id); }}
                     >
-                      {wishlist.includes(p.id) ? "♥" : "♡"}
+                      {wishlist.some(w => w.product_id === p.id) ? "♥" : "♡"}
                     </button>
                   </div>
                   <div className="product-info">
@@ -193,7 +163,7 @@ function Categories() {
                     <p className="product-price">Rs. {p.price.toLocaleString()}</p>
                     <button
                       className={`add-cart-btn ${addedId === p.id ? "added" : ""}`}
-                      onClick={() => addToCart(p.id)}
+                      onClick={() => handleAddToCart(p.id)}
                     >
                       {addedId === p.id ? "✓ Added!" : "Add to Cart"}
                     </button>

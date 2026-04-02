@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../Context/AuthContext";
+import { Link } from "react-router-dom";
 import "../Styles/style.css";
 
 function VerifyOTP() {
@@ -63,7 +64,9 @@ function VerifyOTP() {
             />
             {error && <p className="error">{error}</p>}
             <button type="submit" className="btn" disabled={loading}>
+              <Link to="/login" className="btn-link" >
               {loading ? "Verifying..." : "Verify"}
+              </Link>
             </button>
           </form>
           <p className="text">Didn't receive it? Check your spam folder.</p>

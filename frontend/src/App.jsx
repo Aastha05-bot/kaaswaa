@@ -17,6 +17,8 @@ import ProductDetail from "./pages/ProductDetail";
 import Wishlist from "./pages/Wishlist";
 import Cart from "./pages/Cart";
 import OrderConfirm from "./pages/OrderConfirm";
+import Payment from "./pages/Payment";
+import EmailTemplate from "./pages/EmailTemplate";
 
 function App() {
   return (
@@ -35,6 +37,8 @@ function App() {
         <Route path="/categories/:id" element={<Categories />} />
         <Route path="/about" element={<AboutUs />} />
         <Route path="/order-confirm" element={<OrderConfirm />} />
+        <Route path="/payment" element={<Payment />} />
+        <Route path="/email-template" element={<EmailTemplate />} />
         <Route path="/staff-management" element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <StaffManagement />

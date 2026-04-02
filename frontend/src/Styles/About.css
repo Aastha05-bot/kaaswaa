@@ -1,0 +1,212 @@
+/* Premium About Us Styling */
+.about-page {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: #333;
+  background-color: #fdfdfd;
+}
+
+/* Hero Section */
+.about-hero {
+  background: linear-gradient(135deg, #ff6699 0%, #ff1a66 100%);
+  color: #fff;
+  padding: 100px 20px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.about-hero::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: radial-gradient(circle at top left, rgba(255,255,255,0.15), transparent 40%),
+              radial-gradient(circle at bottom right, rgba(0,0,0,0.1), transparent 50%);
+  pointer-events: none;
+}
+
+.about-hero h1 {
+  font-size: 48px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  margin: 0 0 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.about-hero p {
+  font-size: 20px;
+  font-weight: 300;
+  letter-spacing: 1.5px;
+  margin: 0;
+  color: #ffe6f0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Main Container */
+.about-container {
+  max-width: 1200px;
+  margin: 60px auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 80px;
+}
+
+/* Our Story Section */
+.about-story {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 50px;
+}
+
+.about-story-content {
+  flex: 1;
+  padding-right: 20px;
+}
+
+.about-story-content h2 {
+  font-size: 36px;
+  color: #ff3377;
+  margin-bottom: 25px;
+  position: relative;
+}
+
+.about-story-content h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -10px;
+  width: 60px;
+  height: 3px;
+  background-color: #ff6699;
+  border-radius: 2px;
+}
+
+.about-story-content p {
+  font-size: 17px;
+  line-height: 1.8;
+  color: #555;
+  margin-bottom: 20px;
+}
+
+.about-story-image {
+  flex: 1;
+  position: relative;
+}
+
+.about-story-image img {
+  width: 100%;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+  transition: transform 0.3s ease;
+}
+
+.about-story-image img:hover {
+  transform: translateY(-5px);
+}
+
+.about-story-image::before {
+  content: "";
+  position: absolute;
+  top: -20px;
+  left: -20px;
+  right: 20px;
+  bottom: 20px;
+  border: 2px dashed #ff99bb;
+  border-radius: 16px;
+  z-index: -1;
+}
+
+/* Mission & Values Grid */
+.about-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 40px;
+}
+
+.about-card {
+  background: #ffffff;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+  border: 1px solid #f2f2f2;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  text-align: center;
+}
+
+.about-card:hover {
+  box-shadow: 0 15px 35px rgba(255, 51, 119, 0.1);
+  transform: translateY(-10px);
+  border-color: #ffebf0;
+}
+
+.about-card-icon {
+  width: 60px;
+  height: 60px;
+  background-color: #fff0f5;
+  color: #ff3377;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 25px;
+}
+
+.about-card h3 {
+  font-size: 24px;
+  color: #1a1a1a;
+  margin-bottom: 20px;
+}
+
+.about-card p {
+  font-size: 16px;
+  color: #666;
+  line-height: 1.6;
+}
+
+/* Values List */
+.about-values-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: left;
+}
+
+.about-values-list li {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 16px;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+.about-values-list li svg {
+  color: #ff6699;
+  flex-shrink: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .about-story {
+    flex-direction: column;
+  }
+  
+  .about-story-content {
+    padding-right: 0;
+  }
+  
+  .about-story-image::before {
+    display: none;
+  }
+
+  .about-hero {
+    padding: 60px 20px;
+  }
+
+  .about-hero h1 {
+    font-size: 36px;
+  }
+}

@@ -21,7 +21,7 @@ const verifyToken = require("../middleware/auth");
 
 // ── GET /api/wishlist/:userId  (protected) ────────────────
 router.get("/wishlist/:userId", verifyToken, (req, res) => {
-  if (parseInt(req.params.userId) !== req.user.user_id) {
+  if (parseInt(req.params.userId) !== req.user.id) {
     return res.status(403).json({ message: "Forbidden." });
   }
 
@@ -29,7 +29,7 @@ router.get("/wishlist/:userId", verifyToken, (req, res) => {
     SELECT
       w.wishlist_id,
       w.product_id,
-      w.added_at,
+      w.created_at,
       p.product_name,
       p.price,
       p.image_url,
@@ -39,7 +39,7 @@ router.get("/wishlist/:userId", verifyToken, (req, res) => {
     JOIN product  p ON w.product_id  = p.product_id
     LEFT JOIN category c ON p.category_id = c.category_id
     WHERE w.user_id = ?
-    ORDER BY w.added_at DESC
+    ORDER BY w.created_at DESC
   `;
   db.query(sql, [req.params.userId], (err, results) => {
     if (err) return res.status(500).json({ message: "Failed to fetch wishlist." });
@@ -72,7 +72,7 @@ router.post("/wishlist", verifyToken, (req, res) => {
 
 // ── DELETE /api/wishlist/:userId/:productId  (protected) ──
 router.delete("/wishlist/:userId/:productId", verifyToken, (req, res) => {
-  if (parseInt(req.params.userId) !== req.user.user_id) {
+  if (parseInt(req.params.userId) !== req.user.id) {
     return res.status(403).json({ message: "Forbidden." });
   }
 

@@ -1,17 +1,20 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ShopContext } from "../Context/ShopContext";
 import "../Styles/Header.css";
 
-function Header({ wishlist = [], cart = [] }) {
+function Header({ isLoggedIn, username }) {
   const navigate = useNavigate();
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [searchQuery,   setSearchQuery]   = useState("");
   const [dropdownOpen,  setDropdownOpen]  = useState(false);
   const dropdownRef = useRef(null);
 
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
-  const isLoggedIn = !!token;
+  const { wishlist, cartItemCount } = useContext(ShopContext);
+
+  // If props aren't passed (some pages might not), grab from local storage
+  const isAuth = isLoggedIn !== undefined ? isLoggedIn : !!localStorage.getItem("token");
+  const userDisp = username || localStorage.getItem("username");
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -41,8 +44,8 @@ function Header({ wishlist = [], cart = [] }) {
     if (e.key === "Enter") handleSearch();
   };
 
-  const handleCartClick     = () => navigate(isLoggedIn ? "/cart"     : "/login");
-  const handleWishlistClick = () => navigate(isLoggedIn ? "/wishlist" : "/login");
+  const handleCartClick     = () => navigate(isAuth ? "/cart"     : "/login");
+  const handleWishlistClick = () => navigate(isAuth ? "/wishlist" : "/login");
 
   return (
     <nav className="navbar">
@@ -76,7 +79,7 @@ function Header({ wishlist = [], cart = [] }) {
               stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" />
             </svg>
-            {isLoggedIn && wishlist.length > 0 && (
+            {isAuth && (wishlist?.length || 0) > 0 && (
               <span className="badge">{wishlist.length}</span>
             )}
           </button>
@@ -89,8 +92,8 @@ function Header({ wishlist = [], cart = [] }) {
               <circle cx="20" cy="21" r="1" />
               <path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6" />
             </svg>
-            {isLoggedIn && cart.length > 0 && (
-              <span className="badge">{cart.length}</span>
+            {isAuth && (cartItemCount || 0) > 0 && (
+              <span className="badge">{cartItemCount}</span>
             )}
           </button>
 
@@ -99,7 +102,7 @@ function Header({ wishlist = [], cart = [] }) {
             <button
               className="nav-icon-btn user-icon-btn"
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              title={isLoggedIn ? username : "Login"}
+              title={isAuth ? userDisp : "Login"}
             >
               <div className="user-avatar">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -112,7 +115,7 @@ function Header({ wishlist = [], cart = [] }) {
 
             {dropdownOpen && (
               <div className="user-dropdown">
-                {isLoggedIn ? (
+                {isAuth ? (
                   <>
                     <Link to="/profile" onClick={() => setDropdownOpen(false)}>My Profile</Link>
                     <button onClick={handleLogout}>Logout</button>

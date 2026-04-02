@@ -1,0 +1,85 @@
+.email-page-wrapper {
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background-color: #f0f0f0;
+  min-height: 100vh;
+  padding: 40px 20px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.email-preview-container {
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  background-color: #ffffff;
+  border: 1px solid #ffebf0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 15px rgba(255, 102, 153, 0.1);
+}
+
+.email-preview-header {
+  background-color: #ffffff;
+  padding: 40px 20px 20px;
+  text-align: center;
+  color: #ff3377;
+  border-bottom: 2px solid #fff0f5;
+}
+
+.email-preview-header h1 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.email-preview-header p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ff99bb;
+  letter-spacing: 1px;
+}
+
+.email-preview-content {
+  padding: 40px 30px;
+  text-align: center;
+  color: #333333;
+}
+
+.email-preview-content p {
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 20px;
+  color: #555555;
+}
+
+.email-otp-box {
+  background-color: #ffffff;
+  border: 2px dashed #ff6699;
+  padding: 25px;
+  margin: 30px auto;
+  max-width: 300px;
+  border-radius: 8px;
+}
+
+.email-otp-code {
+  font-size: 34px;
+  font-weight: bold;
+  letter-spacing: 8px;
+  color: #ff3377;
+  margin: 0;
+}
+
+.email-preview-footer {
+  background-color: #ffffff;
+  padding: 25px;
+  text-align: center;
+  font-size: 13px;
+  color: #888888;
+}
+
+.email-preview-footer p {
+  margin: 5px 0;
+}

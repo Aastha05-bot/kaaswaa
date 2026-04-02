@@ -1,4 +1,5 @@
 const nodemailer = require("nodemailer");
+const getEmailTemplate = require("../templates/emailTemplate");
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -9,12 +10,15 @@ const transporter = nodemailer.createTransport({
 });
 
 async function sendOTP(email, otp) {
+  const htmlTemplate = getEmailTemplate(otp);
+
   await transporter.sendMail({
     from: `"Kaa Swaa" <${process.env.EMAIL_USER}>`,
     to: email,
-    subject: "Your verification code",
-    html: `<h2>Your OTP is: <strong>${otp}</strong></h2><p>Expires in 10 minutes.</p>`,
+    subject: "Your Kaa Swaa Verification Code",
+    html: htmlTemplate,
   });
 }
 
 module.exports = sendOTP;
+

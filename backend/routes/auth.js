@@ -20,7 +20,7 @@ router.post("/register", async (req, res) => {
   // Determine table and role
   let table, role;
   if (email === ADMIN_EMAIL) { table = "admins"; role = "admin"; }
-  else if (email.endsWith("@gmail.com")) { table = "users"; role = "user"; }
+  else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { table = "users"; role = "user"; }
   else return res.status(400).json({ message: "Please use a valid Gmail address" });
 
   const nameField = table === "admins" ? "admin_name" : "full_name";
@@ -91,7 +91,7 @@ router.post("/verify-otp", (req, res) => {
           { expiresIn: "1d" }
         );
 
-        res.json({ message: "Email verified!", token, role, username: user[nameField] });
+        res.json({ message: "Email verified!", token, role, username: user[nameField], email: user.email, user_id: user[idField] });
       }
     );
   });
@@ -167,7 +167,7 @@ router.post("/login", async (req, res) => {
         { expiresIn: "1d" }
       );
 
-      return res.json({ token, role, username: user[nameField] });
+      return res.json({ token, role, username: user[nameField], email: user.email, user_id: user[idField] });
     }
   }
 

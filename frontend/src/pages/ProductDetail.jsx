@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AiOutlineLike, AiOutlineDislike } from "react-icons/ai";
+import { ShopContext } from "../Context/ShopContext";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/ProductDetail.css";
@@ -15,14 +16,12 @@ function ProductDetail() {
   const isLoggedIn = !!token;
   const authHeader = { Authorization: `Bearer ${token}` };
 
-  const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
-  const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
+  const { wishlist, addToCart, toggleWishlist } = useContext(ShopContext);
 
   const [product,          setProduct]          = useState(null);
   const [reviews,          setReviews]          = useState([]);
   const [recommendations,  setRecommendations]  = useState([]);
   const [loading,          setLoading]          = useState(true);
-  const [inWishlist,       setInWishlist]       = useState(false);
   const [addedCart,        setAddedCart]        = useState(false);
   const [rating,           setRating]           = useState(0);
   const [hoverRating,      setHoverRating]      = useState(0);
@@ -32,15 +31,10 @@ function ProductDetail() {
   // Track per-review like/dislike counts (client-side only until backend supports it)
   const [reviewVotes, setReviewVotes] = useState({});
 
-  useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
-  useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
-
   useEffect(() => {
     fetchProduct();
     fetchReviews();
     fetchRecommendations();
-    const saved = JSON.parse(localStorage.getItem("wishlist") || "[]");
-    if (id && saved.includes(Number(id))) setInWishlist(true);
   }, [id]);
 
   const fetchProduct = async () => {
@@ -75,46 +69,14 @@ function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!isLoggedIn) { navigate("/login"); return; }
-    try {
-      await fetch(`${BASE}/cart`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify({
-          product_id: product.product_id,
-          quantity:   1,
-          price:      product.price,
-        }),
-      });
-      setCart((prev) => [...prev, product.product_id]);
-      setAddedCart(true);
-      setTimeout(() => setAddedCart(false), 2000);
-    } catch {
-      alert("Failed to add to cart");
-    }
+    addToCart(product.product_id, 1);
+    setAddedCart(true);
+    setTimeout(() => setAddedCart(false), 2000);
   };
 
   const handleWishlist = async () => {
     if (!isLoggedIn) { navigate("/login"); return; }
-    try {
-      if (inWishlist) {
-        await fetch(`${BASE}/wishlist/${product.product_id}`, {
-          method: "DELETE",
-          headers: authHeader,
-        });
-        setInWishlist(false);
-        setWishlist((prev) => prev.filter((i) => i !== product.product_id));
-      } else {
-        await fetch(`${BASE}/wishlist`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", ...authHeader },
-          body: JSON.stringify({ product_id: product.product_id }),
-        });
-        setInWishlist(true);
-        setWishlist((prev) => [...prev, product.product_id]);
-      }
-    } catch {
-      alert("Failed to update wishlist");
-    }
+    toggleWishlist(product.product_id);
   };
 
   const handleReviewSubmit = async (e) => {
@@ -172,7 +134,7 @@ function ProductDetail() {
 
   if (loading) return (
     <div className="pd-page">
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header isLoggedIn={isLoggedIn} username={username} />
       <div className="pd-loading"><div className="pd-spinner" /></div>
       <Footer />
     </div>
@@ -180,7 +142,7 @@ function ProductDetail() {
 
   if (!product) return (
     <div className="pd-page">
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header isLoggedIn={isLoggedIn} username={username} />
       <div className="pd-loading">
         <p>Product not found.</p>
         <button className="pd-back-btn" onClick={() => navigate("/products")}>← Back to Products</button>
@@ -188,10 +150,11 @@ function ProductDetail() {
       <Footer />
     </div>
   );
+  const inWishlist = wishlist?.some(w => w.product_id === product.product_id);
 
   return (
     <div className="pd-page">
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header isLoggedIn={isLoggedIn} username={username} />
 
       <div className="pd-container">
         <button className="pd-back-btn" onClick={() => navigate(-1)}>← Back</button>
@@ -355,7 +318,7 @@ function ProductDetail() {
                 <div
                   key={rec.product_id}
                   className="pd-reco-card"
-                  onClick={() => navigate(`/products/${rec.product_id}`)}
+                  onClick={() => navigate(`/product/${rec.product_id}`)}
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => e.key === "Enter" && navigate(`/products/${rec.product_id}`)}

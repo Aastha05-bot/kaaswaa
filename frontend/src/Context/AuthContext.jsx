@@ -18,7 +18,9 @@ export function AuthProvider({ children }) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("role", data.role);
     localStorage.setItem("username", data.username);
-    setUser({ token: data.token, role: data.role, username: data.username });
+    localStorage.setItem("email", data.email); 
+    localStorage.setItem("user_id", data.user_id);
+    setUser({ token: data.token, role: data.role, username: data.username, email: data.email, user_id: data.user_id });
   };
 
   const logout = () => {

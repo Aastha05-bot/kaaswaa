@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { ShopContext } from "../Context/ShopContext";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/Cart.css";
@@ -11,80 +12,30 @@ function Cart() {
   const username   = localStorage.getItem("username");
   const isLoggedIn = !!token;
 
-  const [wishlist,  setWishlist]  = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
-  const [cart,      setCart]      = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
-  const [products,  setProducts]  = useState([]);
-  const [loading,   setLoading]   = useState(true);
-  const [selected,  setSelected]  = useState({});
+  const { cart, loading: ctxLoading, updateCartQuantity, removeFromCart, toggleWishlist } = useContext(ShopContext);
 
-  useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
-  useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
+  const [selected,  setSelected]  = useState({});
 
   useEffect(() => { if (!isLoggedIn) navigate("/login"); }, [isLoggedIn, navigate]);
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const res  = await fetch("http://localhost:5000/api/products");
-        if (!res.ok) throw new Error();
-        const data = await res.json();
-        setProducts(
-          (Array.isArray(data) ? data : []).map((p) => ({
-            id:       p.product_id,
-            name:     p.product_name,
-            price:    parseFloat(p.price),
-            category: p.category_name || "General",
-            tag:      p.tag || "",
-            image:    p.image_url || "/placeholder.jpg",
-          }))
-        );
-      } catch { /* silent */ }
-      finally { setLoading(false); }
-    };
-    fetchProducts();
-  }, []);
-
-  const cartItems = (() => {
-    const counts = {};
-    cart.forEach((id) => { counts[id] = (counts[id] || 0) + 1; });
-    return Object.entries(counts).map(([id, qty]) => ({
-      product: products.find((p) => p.id === Number(id)),
-      qty,
-    })).filter((item) => item.product);
-  })();
-
   const toggleSelect    = (id) => setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   const toggleSelectAll = () => {
-    const allSelected = cartItems.every((i) => selected[i.product.id]);
+    const allSelected = cart.every((i) => selected[i.product_id]);
     const next = {};
-    cartItems.forEach((i) => { next[i.product.id] = !allSelected; });
+    cart.forEach((i) => { next[i.product_id] = !allSelected; });
     setSelected(next);
   };
 
-  const selectedItems = cartItems.filter((i) => selected[i.product.id]);
-  const allSelected   = cartItems.length > 0 && cartItems.every((i) => selected[i.product.id]);
+  const selectedItems = cart.filter((i) => selected[i.product_id]);
+  const allSelected   = cart.length > 0 && cart.every((i) => selected[i.product_id]);
 
-  const subtotal = selectedItems.reduce((s, { product, qty }) => s + product.price * qty, 0);
+  const subtotal = selectedItems.reduce((s, item) => s + (item.price * item.quantity), 0);
   const shipping  = subtotal > 0 ? 150 : 0;
   const total     = subtotal + shipping;
 
-  const setItemQty = (id, newQty) => {
-    setCart((prev) => {
-      const without = prev.filter((i) => i !== id);
-      const added   = Array(Math.max(0, newQty)).fill(id);
-      return [...without, ...added];
-    });
-  };
-
-  const removeItem = (id) => {
-    setItemQty(id, 0);
-    setSelected((prev) => { const n = { ...prev }; delete n[id]; return n; });
-  };
-
-  const moveToWishlist = (id) => {
-    removeItem(id);
-    setWishlist((prev) => prev.includes(id) ? prev : [...prev, id]);
+  const moveToWishlist = async (id) => {
+    await removeFromCart(id);
+    await toggleWishlist(id); // Handles add since it was strictly moved
   };
 
   const handleProceed = () => {
@@ -93,7 +44,19 @@ function Cart() {
       return;
     }
     // Save selected items + totals for checkout page
-    localStorage.setItem("checkout_items",    JSON.stringify(selectedItems));
+    // Map them slightly so the checkout page gets what it expects
+    const mappedForCheckout = selectedItems.map(si => ({
+      product: {
+        id: si.product_id,
+        name: si.product_name,
+        price: si.price,
+        image: si.image_url,
+        category: si.category_name
+      },
+      qty: si.quantity
+    }));
+
+    localStorage.setItem("checkout_items",    JSON.stringify(mappedForCheckout));
     localStorage.setItem("checkout_subtotal", subtotal);
     localStorage.setItem("checkout_shipping", shipping);
     localStorage.setItem("checkout_total",    total);
@@ -102,13 +65,31 @@ function Cart() {
 
   return (
     <div className="cart-page">
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header isLoggedIn={isLoggedIn} username={username} />
 
-      <div className="cart-layout">
-        {/* ---- Items column ---- */}
-        <div className="cart-items-col">
-
-          {!loading && cartItems.length > 0 && (
+      {ctxLoading ? (
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '50px 0' }}>
+          <div className="cart-spinner" />
+        </div>
+      ) : cart.length === 0 ? (
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', padding: '50px 0' }}>
+          <div className="cart-empty">
+            <svg width="50" height="50" viewBox="0 0 24 24" fill="none"
+              stroke="gray" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="9"  cy="21" r="1" />
+              <circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6" />
+            </svg>
+            <h3>Your cart is empty</h3>
+            <button className="cart-shop-btn" onClick={() => navigate("/products")}>
+              Browse Products
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="cart-layout">
+          {/* ---- Items column ---- */}
+          <div className="cart-items-col">
             <div className="cart-select-all">
               <label className="cart-checkbox-label">
                 <input
@@ -120,53 +101,36 @@ function Cart() {
                 <span>Select All items</span>
               </label>
             </div>
-          )}
 
-          {loading ? (
-            <div className="cart-loading"><div className="cart-spinner" /></div>
-          ) : cartItems.length === 0 ? (
-            <div className="cart-empty">
-              <svg width="50" height="50" viewBox="0 0 24 24" fill="none"
-                stroke="gray" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="9"  cy="21" r="1" />
-                <circle cx="20" cy="21" r="1" />
-                <path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61h9.72a2 2 0 001.99-1.61L23 6H6" />
-              </svg>
-              <h3>Your cart is empty</h3>
-              <button className="cart-shop-btn" onClick={() => navigate("/products")}>
-                Browse Products
-              </button>
-            </div>
-          ) : (
-            cartItems.map(({ product, qty }, i) => (
+            {cart.map((item, i) => (
               <div
-                className={`cart-item ${selected[product.id] ? "cart-item--selected" : ""}`}
-                key={product.id}
+                className={`cart-item ${selected[item.product_id] ? "cart-item--selected" : ""}`}
+                key={item.cart_item_id || item.product_id}
                 style={{ animationDelay: `${i * 0.07}s` }}
               >
-                <div className="cart-item-img" onClick={() => navigate(`/product/${product.id}`)}>
-                  <img src={product.image} alt={product.name} />
+                <div className="cart-item-img" onClick={() => navigate(`/product/${item.product_id}`)}>
+                  <img src={item.image_url || "/placeholder.jpg"} alt={item.product_name} />
                 </div>
 
                 <div className="cart-item-body">
-                  <p className="cart-item-cat">{product.category}</p>
-                  <h3 onClick={() => navigate(`/product/${product.id}`)}>{product.name}</h3>
-                  <p className="cart-item-unit-price">Rs. {product.price.toLocaleString()} each</p>
+                  <p className="cart-item-cat">{item.category_name || "General"}</p>
+                  <h3 onClick={() => navigate(`/product/${item.product_id}`)}>{item.product_name}</h3>
+                  <p className="cart-item-unit-price">Rs. {Number(item.price).toLocaleString()} each</p>
 
                   <div className="cart-item-row">
                     <div className="cart-qty-wrap">
-                      <button className="cart-qty-btn" onClick={() => setItemQty(product.id, qty - 1)}>−</button>
-                      <span className="cart-qty-val">{qty}</span>
-                      <button className="cart-qty-btn" onClick={() => setItemQty(product.id, qty + 1)}>+</button>
+                      <button className="cart-qty-btn" onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)}>−</button>
+                      <span className="cart-qty-val">{item.quantity}</span>
+                      <button className="cart-qty-btn" onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)}>+</button>
                     </div>
-                    <p className="cart-item-total">Rs. {(product.price * qty).toLocaleString()}</p>
+                    <p className="cart-item-total">Rs. {(item.price * item.quantity).toLocaleString()}</p>
                   </div>
 
                   <div className="cart-item-actions">
-                    <button className="cart-action-link" onClick={() => moveToWishlist(product.id)}>
+                    <button className="cart-action-link" onClick={() => moveToWishlist(item.product_id)}>
                       Save for later
                     </button>
-                    <button className="cart-action-link danger" onClick={() => removeItem(product.id)}>
+                    <button className="cart-action-link danger" onClick={() => removeFromCart(item.product_id)}>
                       Remove
                     </button>
                   </div>
@@ -176,17 +140,15 @@ function Cart() {
                   <input
                     type="checkbox"
                     className="cart-checkbox"
-                    checked={!!selected[product.id]}
-                    onChange={() => toggleSelect(product.id)}
+                    checked={!!selected[item.product_id]}
+                    onChange={() => toggleSelect(item.product_id)}
                   />
                 </div>
               </div>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
 
-        {/* ---- Summary column ---- */}
-        {cartItems.length > 0 && (
+          {/* ---- Summary column ---- */}
           <div className="cart-summary">
             <h2 className="cart-summary-title">Order Summary</h2>
 
@@ -195,7 +157,7 @@ function Cart() {
             ) : (
               <div className="cart-summary-rows">
                 <div className="cart-summary-row">
-                  <span>Subtotal ({selectedItems.reduce((s, i) => s + i.qty, 0)} items)</span>
+                  <span>Subtotal ({selectedItems.reduce((s, i) => s + i.quantity, 0)} items)</span>
                   <span>Rs. {subtotal.toLocaleString()}</span>
                 </div>
                 <div className="cart-summary-row">
@@ -221,8 +183,8 @@ function Cart() {
               ← Continue Shopping
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       <Footer />
     </div>

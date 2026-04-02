@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { ShopContext } from "../Context/ShopContext";
 import "../Styles/Product.css";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -29,18 +30,12 @@ function Products() {
   const [loading,        setLoading]        = useState(true);
   const [error,          setError]          = useState("");
 
-  // ✅ FIX: Read from localStorage on init so counts persist across pages
-  const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
-  const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
+  const { wishlist, addToCart, toggleWishlist } = useContext(ShopContext);
 
   const [activeCategory, setActiveCategory] = useState("All");
   const [sortBy,         setSortBy]         = useState("default");
   const [addedId,        setAddedId]        = useState(null);
   const [currentPage,    setCurrentPage]    = useState(1);
-
-  // ✅ FIX: Persist wishlist & cart to localStorage whenever they change
-  useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
-  useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
 
   // Fetch products
   useEffect(() => {
@@ -79,16 +74,11 @@ function Products() {
     action();
   };
 
-  const toggleWishlist = (id) =>
-    requireAuth(() =>
-      setWishlist((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-      )
-    );
+  const handleToggleWishlist = (id) => requireAuth(() => toggleWishlist(id));
 
-  const addToCart = (id) =>
+  const handleAddToCart = (id) =>
     requireAuth(() => {
-      setCart((prev) => [...prev, id]);
+      addToCart(id, 1);
       setAddedId(id);
       setTimeout(() => setAddedId(null), 1500);
     });
@@ -125,7 +115,7 @@ function Products() {
 
   return (
     <div className="products-page-wrapper">
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header isLoggedIn={isLoggedIn} username={username} />
 
       {/* HERO */}
       <section className="products-hero">
@@ -169,7 +159,7 @@ function Products() {
         {loading ? (
           <div className="products-empty">
             <div className="products-spinner" />
-            <p>Loading products...</p>
+             <p>Loading products...</p>
           </div>
         ) : error ? (
           <div className="products-empty"><p>{error}</p></div>
@@ -182,7 +172,7 @@ function Products() {
                 className="products-clear-btn"
                 onClick={() => navigate("/products")}
               >
-                Clear Search
+                 Clear Search
               </button>
             )}
           </div>
@@ -199,11 +189,11 @@ function Products() {
                   <img src={p.image} alt={p.name} />
                   {p.tag && <span className="product-tag">{p.tag}</span>}
                   <button
-                    className={`wishlist-btn ${wishlist.includes(p.id) ? "active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleWishlist(p.id); }}
-                    title={wishlist.includes(p.id) ? "Remove from wishlist" : "Add to wishlist"}
+                    className={`wishlist-btn ${wishlist.some(w => w.product_id === p.id) ? "active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); handleToggleWishlist(p.id); }}
+                    title={wishlist.some(w => w.product_id === p.id) ? "Remove from wishlist" : "Add to wishlist"}
                   >
-                    {wishlist.includes(p.id) ? "♥" : "♡"}
+                    {wishlist.some(w => w.product_id === p.id) ? "♥" : "♡"}
                   </button>
                 </div>
                 <div className="product-info">
@@ -212,7 +202,7 @@ function Products() {
                   <p className="product-price">Rs. {p.price.toLocaleString()}</p>
                   <button
                     className={`add-cart-btn ${addedId === p.id ? "added" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); addToCart(p.id); }}
+                    onClick={(e) => { e.stopPropagation(); handleAddToCart(p.id); }}
                   >
                     {addedId === p.id ? "✓ Added!" : "Add to Cart"}
                   </button>

@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ShopContext } from "../Context/ShopContext";
 import "../Styles/Home.css";
 import Header from "./Header";
 import Footer from "./Footer";
@@ -14,15 +15,11 @@ function Home() {
   const token      = localStorage.getItem("token");
   const username   = localStorage.getItem("username");
   const isLoggedIn = !!token;
+  const { wishlist, addToCart, toggleWishlist } = useContext(ShopContext);
 
-  const [wishlist,   setWishlist]   = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
-  const [cart,       setCart]       = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
   const [categories, setCategories] = useState([]);
   const [products,   setProducts]   = useState([]);
   const [igTooltip,  setIgTooltip]  = useState(false);
-
-  useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
-  useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
 
   useEffect(() => {
     fetch("http://localhost:5000/api/categories")
@@ -53,21 +50,16 @@ function Home() {
     if (!isLoggedIn) { navigate("/login"); return; }
     action();
   };
-
-  const toggleWishlist = (id) =>
-    requireAuth(() =>
-      setWishlist((prev) =>
-        prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-      )
-    );
-
-  const addToCart = (id) =>
-    requireAuth(() => setCart((prev) => [...prev, id]));
+  const handleAddToCart = (id) =>
+    requireAuth(() => addToCart(id, 1));
+    
+  const handleToggleWishlist = (id) =>
+    requireAuth(() => toggleWishlist(id));
 
   return (
     <div className="home-wrapper">
 
-      <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
+      <Header isLoggedIn={isLoggedIn} username={username} />
 
       {/* BANNER */}
       <section className="banner" id="home">
@@ -141,16 +133,16 @@ function Home() {
                   <img src={p.image} alt={p.name} />
                   {p.tag && <span className="product-tag">{p.tag}</span>}
                   <button
-                    className={`wishlist-btn ${wishlist.includes(p.id) ? "active" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); toggleWishlist(p.id); }}
+                    className={`wishlist-btn ${wishlist.some(w => w.product_id === p.id) ? "active" : ""}`}
+                    onClick={(e) => { e.stopPropagation(); handleToggleWishlist(p.id); }}
                   >
-                    {wishlist.includes(p.id) ? "♥" : "♡"}
+                    {wishlist.some(w => w.product_id === p.id) ? "♥" : "♡"}
                   </button>
                 </div>
                 <div className="product-info">
                   <h3 onClick={() => navigate(`/product/${p.id}`)}>{p.name}</h3>
                   <p className="product-price">Rs. {p.price.toLocaleString()}</p>
-                  <button className="add-cart-btn" onClick={() => addToCart(p.id)}>
+                  <button className="add-cart-btn" onClick={() => handleAddToCart(p.id)}>
                     Add to Cart
                   </button>
                 </div>
