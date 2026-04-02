@@ -34,7 +34,7 @@ function App() {
         <Route path="/categories" element={<Categories />} />
         <Route path="/categories/:id" element={<Categories />} />
         <Route path="/about" element={<AboutUs />} />
-        {/* <Rote path="/order-confirm" element={<OrderConfirm />} /> */}
+        <Route path="/order-confirm" element={<OrderConfirm />} />
         <Route path="/staff-management" element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <StaffManagement />

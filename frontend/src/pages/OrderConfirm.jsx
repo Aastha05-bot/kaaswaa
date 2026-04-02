@@ -22,6 +22,45 @@ const CITIES = [
   "Damak",
 ];
 
+const PAYMENT_METHODS = [
+  {
+    id: "esewa",
+    label: "eSewa",
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+        <rect width="48" height="48" rx="10" fill="#60BB46"/>
+        <text x="50%" y="58%" dominantBaseline="middle" textAnchor="middle" fill="white" fontSize="13" fontWeight="700" fontFamily="DM Sans, sans-serif">eSewa</text>
+      </svg>
+    ),
+  },
+  {
+    id: "card",
+    label: "Credit / Debit Card",
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+        <rect x="2" y="10" width="44" height="28" rx="5" fill="#e85a8a"/>
+        <rect x="2" y="18" width="44" height="8" fill="#c0416c"/>
+        <rect x="8" y="30" width="12" height="4" rx="2" fill="white" opacity="0.7"/>
+        <rect x="26" y="30" width="14" height="4" rx="2" fill="white" opacity="0.7"/>
+      </svg>
+    ),
+  },
+  {
+    id: "cod",
+    label: "Cash on Delivery",
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="32" height="32">
+        <rect width="48" height="48" rx="10" fill="#f5f5f5"/>
+        <rect x="8" y="14" width="32" height="20" rx="4" fill="#e85a8a" opacity="0.15"/>
+        <rect x="8" y="14" width="32" height="20" rx="4" stroke="#e85a8a" strokeWidth="2"/>
+        <circle cx="24" cy="24" r="6" fill="#e85a8a" opacity="0.2"/>
+        <circle cx="24" cy="24" r="6" stroke="#e85a8a" strokeWidth="2"/>
+        <text x="24" y="28" dominantBaseline="middle" textAnchor="middle" fill="#e85a8a" fontSize="8" fontWeight="700" fontFamily="DM Sans,sans-serif">Rs</text>
+      </svg>
+    ),
+  },
+];
+
 function OrderConfirm() {
   const navigate   = useNavigate();
   const token      = localStorage.getItem("token");
@@ -33,24 +72,20 @@ function OrderConfirm() {
   const [wishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
   const [cart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
 
-  // Checkout items from cart page
   const [checkoutItems, setCheckoutItems] = useState([]);
   const [subtotal,  setSubtotal]  = useState(0);
   const [shipping,  setShipping]  = useState(150);
   const [total,     setTotal]     = useState(0);
 
-  // Form state
-  const [phone,     setPhone]     = useState("");
-  const [city,      setCity]      = useState(CITIES[0]);
-  const [address,   setAddress]   = useState("");
-  const [landmark,  setLandmark]  = useState("");
-  const [note,      setNote]      = useState("");
-  const [promoCode, setPromoCode] = useState("");
-  const [promoMsg,  setPromoMsg]  = useState("");
-  const [discount,  setDiscount]  = useState(0);
-  const [placing,   setPlacing]   = useState(false);
-  const [ordered,   setOrdered]   = useState(false);
-  const [errors,    setErrors]    = useState({});
+  const [phone,          setPhone]          = useState("");
+  const [city,           setCity]           = useState(CITIES[0]);
+  const [address,        setAddress]        = useState("");
+  const [landmark,       setLandmark]       = useState("");
+  const [note,           setNote]           = useState("");
+  const [paymentMethod,  setPaymentMethod]  = useState("esewa");
+  const [placing,        setPlacing]        = useState(false);
+  const [ordered,        setOrdered]        = useState(false);
+  const [errors,         setErrors]         = useState({});
 
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login"); return; }
@@ -64,26 +99,6 @@ function OrderConfirm() {
     setTotal(sub + shi);
   }, []);
 
-  // Recalculate total when discount changes
-  useEffect(() => {
-    setTotal(subtotal + shipping - discount);
-  }, [subtotal, shipping, discount]);
-
-  const applyPromo = () => {
-    const code = promoCode.trim().toUpperCase();
-    if (code === "FREE30") {
-      const d = Math.round(subtotal * 0.3);
-      setDiscount(d);
-      setPromoMsg(`✓ 30% discount applied! You saved Rs. ${d.toLocaleString()}`);
-    } else if (code === "SHIP0") {
-      setDiscount(shipping);
-      setPromoMsg("✓ Free shipping applied!");
-    } else {
-      setDiscount(0);
-      setPromoMsg("Invalid promo code.");
-    }
-  };
-
   const validate = () => {
     const e = {};
     if (!phone.trim())   e.phone   = "Phone number is required";
@@ -91,22 +106,35 @@ function OrderConfirm() {
     return e;
   };
 
-  const placeOrder = async () => {
+  const handleProceed = () => {
     const e = validate();
     if (Object.keys(e).length) { setErrors(e); return; }
     setErrors({});
 
+    // Save order details for payment page
+    localStorage.setItem("pending_order", JSON.stringify({
+      phone, city, address, landmark, note,
+      paymentMethod, total, subtotal, shipping,
+    }));
+
+    if (paymentMethod === "cod") {
+      placeCODOrder();
+    } else {
+      navigate("/payment");
+    }
+  };
+
+  const placeCODOrder = async () => {
     try {
       setPlacing(true);
       const userId = localStorage.getItem("user_id");
-
       const items = checkoutItems.map(({ product, qty }) => ({
         product_id: product.id,
         quantity:   qty,
         price:      product.price,
       }));
 
-      const res = await fetch("http://localhost:5000/api/cart", {
+      const res = await fetch("http://localhost:5000/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,20 +143,14 @@ function OrderConfirm() {
         body: JSON.stringify({
           user_id:        userId,
           total_amount:   total,
-          phone,
-          city,
-          address,
-          landmark,
-          note,
-          promo_code:     promoCode,
-          discount_amount: discount,
+          phone, city, address, landmark, note,
+          payment_method: "cod",
           items,
         }),
       });
 
       if (!res.ok) throw new Error();
 
-      // Clear selected items from cart
       const selectedIds = new Set(checkoutItems.map((i) => i.product.id));
       const currentCart = JSON.parse(localStorage.getItem("cart") || "[]");
       localStorage.setItem("cart", JSON.stringify(currentCart.filter((id) => !selectedIds.has(id))));
@@ -136,6 +158,7 @@ function OrderConfirm() {
       localStorage.removeItem("checkout_subtotal");
       localStorage.removeItem("checkout_shipping");
       localStorage.removeItem("checkout_total");
+      localStorage.removeItem("pending_order");
 
       setOrdered(true);
     } catch {
@@ -145,14 +168,13 @@ function OrderConfirm() {
     }
   };
 
-  /* ── Success screen ── */
   if (ordered) {
     return (
       <div className="oc-page">
         <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
         <div className="oc-success">
           <div className="oc-success-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="32" height="32">
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
@@ -191,21 +213,11 @@ function OrderConfirm() {
             <div className="oc-row-2">
               <div className="oc-field">
                 <label className="oc-label">Full Name</label>
-                <input
-                  className="oc-input oc-input--readonly"
-                  value={fullName}
-                  readOnly
-                  placeholder="Your full name"
-                />
+                <input className="oc-input oc-input--readonly" value={fullName} readOnly placeholder="Your full name" />
               </div>
               <div className="oc-field">
                 <label className="oc-label">Email</label>
-                <input
-                  className="oc-input oc-input--readonly"
-                  value={email}
-                  readOnly
-                  placeholder="Your email"
-                />
+                <input className="oc-input oc-input--readonly" value={email} readOnly placeholder="Your email" />
               </div>
             </div>
 
@@ -228,26 +240,20 @@ function OrderConfirm() {
                 className="oc-input"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="eg: I was searching for this product for so long."
+                placeholder="eg: Please pack it nicely."
               />
             </div>
           </div>
 
           {/* Section 2: Delivery Address */}
           <div className="oc-section">
-            <h2 className="oc-section-title">Delivery Address</h2>
+            <h2 className="oc-section-title">2. Delivery Address</h2>
 
             <div className="oc-field">
               <label className="oc-label">City / District <span className="oc-required">*</span></label>
               <div className="oc-select-wrap">
-                <select
-                  className="oc-select"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                >
-                  {CITIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
+                <select className="oc-select" value={city} onChange={(e) => setCity(e.target.value)}>
+                  {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <svg className="oc-select-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 12 15 18 9" />
@@ -280,30 +286,33 @@ function OrderConfirm() {
 
           {/* Section 3: Payment Methods */}
           <div className="oc-section">
-            <h2 className="oc-section-title">Payment Methods</h2>
-            <div className="oc-payment-card oc-payment-card--active">
-              <div className="oc-payment-icon">
-                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-                  <rect x="4"  y="4"  width="16" height="16" rx="1" fill="#333"/>
-                  <rect x="8"  y="8"  width="8"  height="8"  rx="0.5" fill="white"/>
-                  <rect x="28" y="4"  width="16" height="16" rx="1" fill="#333"/>
-                  <rect x="32" y="8"  width="8"  height="8"  rx="0.5" fill="white"/>
-                  <rect x="4"  y="28" width="16" height="16" rx="1" fill="#333"/>
-                  <rect x="8"  y="32" width="8"  height="8"  rx="0.5" fill="white"/>
-                  <rect x="28" y="28" width="4"  height="4"  fill="#333"/>
-                  <rect x="36" y="28" width="4"  height="4"  fill="#333"/>
-                  <rect x="28" y="36" width="4"  height="4"  fill="#333"/>
-                  <rect x="36" y="36" width="4"  height="4"  fill="#333"/>
-                  <rect x="32" y="32" width="4"  height="4"  fill="#333"/>
-                </svg>
-              </div>
-              <span className="oc-payment-label">QR Payment</span>
-              <div className="oc-payment-check">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </div>
+            <h2 className="oc-section-title">3. Payment Method</h2>
+            <div className="oc-payment-grid">
+              {PAYMENT_METHODS.map((m) => (
+                <button
+                  key={m.id}
+                  className={`oc-payment-card ${paymentMethod === m.id ? "oc-payment-card--active" : ""}`}
+                  onClick={() => setPaymentMethod(m.id)}
+                  type="button"
+                >
+                  <div className="oc-payment-icon">{m.icon}</div>
+                  <span className="oc-payment-label">{m.label}</span>
+                  <div className={`oc-payment-check ${paymentMethod === m.id ? "oc-payment-check--active" : ""}`}>
+                    {paymentMethod === m.id && (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="12" height="12">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+              ))}
             </div>
+            {(paymentMethod === "esewa" || paymentMethod === "card") && (
+              <p className="oc-payment-note">You'll be redirected to the payment page to complete your purchase.</p>
+            )}
+            {paymentMethod === "cod" && (
+              <p className="oc-payment-note">Pay with cash when your order arrives at your door.</p>
+            )}
           </div>
         </div>
 
@@ -339,42 +348,18 @@ function OrderConfirm() {
                 <span>Delivery Charge</span>
                 <span>Rs. {shipping.toLocaleString()}</span>
               </div>
-              {discount > 0 && (
-                <div className="oc-summary-row oc-summary-row--discount">
-                  <span>Discount</span>
-                  <span>- Rs. {discount.toLocaleString()}</span>
-                </div>
-              )}
               <div className="oc-summary-row oc-summary-row--total">
                 <span>Total</span>
                 <span>Rs. {total.toLocaleString()}</span>
               </div>
             </div>
 
-            <div className="oc-promo-section">
-              <p className="oc-promo-label">Promo Code</p>
-              <div className="oc-promo-row">
-                <input
-                  className="oc-promo-input"
-                  value={promoCode}
-                  onChange={(e) => { setPromoCode(e.target.value); setPromoMsg(""); }}
-                  placeholder="eg: FREE30"
-                />
-                <button className="oc-promo-btn" onClick={applyPromo}>APPLY</button>
-              </div>
-              {promoMsg && (
-                <p className={`oc-promo-msg ${promoMsg.startsWith("✓") ? "oc-promo-msg--success" : "oc-promo-msg--error"}`}>
-                  {promoMsg}
-                </p>
-              )}
-            </div>
-
-            <button
-              className="oc-place-btn"
-              onClick={placeOrder}
-              disabled={placing}
-            >
-              {placing ? "Placing Order..." : "Place Order"}
+            <button className="oc-place-btn" onClick={handleProceed} disabled={placing}>
+              {placing
+                ? "Placing Order..."
+                : paymentMethod === "cod"
+                  ? "Place Order"
+                  : `Pay with ${PAYMENT_METHODS.find(m => m.id === paymentMethod)?.label}`}
             </button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { AiOutlineLike, AiOutlineDislike } from "react-icons/ai";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/ProductDetail.css";
@@ -17,19 +18,20 @@ function ProductDetail() {
   const [wishlist, setWishlist] = useState(() => JSON.parse(localStorage.getItem("wishlist") || "[]"));
   const [cart,     setCart]     = useState(() => JSON.parse(localStorage.getItem("cart")     || "[]"));
 
-  const [product,        setProduct]        = useState(null);
-  const [reviews,        setReviews]        = useState([]);
-  const [recommendations, setRecommendations] = useState([]);
-  const [loading,        setLoading]        = useState(true);
-  const [inWishlist,     setInWishlist]     = useState(false);
-  const [addedCart,      setAddedCart]      = useState(false);
-  const [rating,         setRating]         = useState(0);
-  const [hoverRating,    setHoverRating]    = useState(0);
-  const [comment,        setComment]        = useState("");
-  const [reviewMsg,      setReviewMsg]      = useState("");
-  const [submitting,     setSubmitting]     = useState(false);
+  const [product,          setProduct]          = useState(null);
+  const [reviews,          setReviews]          = useState([]);
+  const [recommendations,  setRecommendations]  = useState([]);
+  const [loading,          setLoading]          = useState(true);
+  const [inWishlist,       setInWishlist]       = useState(false);
+  const [addedCart,        setAddedCart]        = useState(false);
+  const [rating,           setRating]           = useState(0);
+  const [hoverRating,      setHoverRating]      = useState(0);
+  const [comment,          setComment]          = useState("");
+  const [reviewMsg,        setReviewMsg]        = useState("");
+  const [submitting,       setSubmitting]       = useState(false);
+  // Track per-review like/dislike counts (client-side only until backend supports it)
+  const [reviewVotes, setReviewVotes] = useState({});
 
-  // Persist wishlist & cart
   useEffect(() => { localStorage.setItem("wishlist", JSON.stringify(wishlist)); }, [wishlist]);
   useEffect(() => { localStorage.setItem("cart",     JSON.stringify(cart));     }, [cart]);
 
@@ -63,7 +65,6 @@ function ProductDetail() {
     } catch { /* silent */ }
   };
 
-  // ── Fetch category-based recommendations ──
   const fetchRecommendations = async () => {
     try {
       const res  = await fetch(`${BASE}/recommendations/${id}`);
@@ -134,7 +135,7 @@ function ProductDetail() {
       });
       const data = await res.json();
       if (!res.ok) { setReviewMsg(data.message); return; }
-      setReviewMsg("✓ Review submitted!");
+      setReviewMsg("Review submitted!");
       setComment("");
       setRating(0);
       fetchReviews();
@@ -145,7 +146,21 @@ function ProductDetail() {
     }
   };
 
-  // Helper: render filled/empty stars from a numeric rating
+  const handleVote = (reviewId, type) => {
+    setReviewVotes((prev) => {
+      const current = prev[reviewId] || { likes: 0, dislikes: 0, voted: null };
+      if (current.voted === type) return prev; // already voted
+      return {
+        ...prev,
+        [reviewId]: {
+          likes:    type === "like"    ? current.likes + 1    : current.likes,
+          dislikes: type === "dislike" ? current.dislikes + 1 : current.dislikes,
+          voted: type,
+        },
+      };
+    });
+  };
+
   const renderStars = (val) => {
     const rounded = Math.round(val || 0);
     return "★".repeat(rounded) + "☆".repeat(5 - rounded);
@@ -179,8 +194,6 @@ function ProductDetail() {
       <Header wishlist={wishlist} cart={cart} isLoggedIn={isLoggedIn} username={username} />
 
       <div className="pd-container">
-
-        {/* Back button */}
         <button className="pd-back-btn" onClick={() => navigate(-1)}>← Back</button>
 
         {/* ── Product top ── */}
@@ -221,7 +234,7 @@ function ProductDetail() {
           </div>
         </div>
 
-       {/* ── Reviews ── */}
+        {/* ── Reviews ── */}
         <div className="pd-reviews">
           <h2 className="pd-reviews-title">Rating &amp; Review</h2>
 
@@ -284,13 +297,14 @@ function ProductDetail() {
           </div>
 
           {/* Customer Reviews */}
-          <h3 className="pd-section-title">Customer Review</h3>
+          <h3 className="pd-section-title">Customer Reviews</h3>
           <div className="pd-review-list">
             {reviews.length === 0 ? (
               <p className="pd-no-reviews">No reviews yet. Be the first!</p>
             ) : (
               reviews.map(r => {
                 const initials = r.full_name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                const votes = reviewVotes[r.feedback_id] || { likes: 0, dislikes: 0, voted: null };
                 return (
                   <div key={r.feedback_id} className="pd-review-card">
                     <div className="pd-review-header">
@@ -299,12 +313,28 @@ function ProductDetail() {
                         <div className="pd-review-stars">{"★".repeat(r.ratings)}{"☆".repeat(5 - r.ratings)}</div>
                         <span className="pd-reviewer">{r.full_name}</span>
                       </div>
-                      <span className="pd-review-date">{new Date(r.feedback_date).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"2-digit"})}</span>
+                      <span className="pd-review-date">
+                        {new Date(r.feedback_date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "2-digit" })}
+                      </span>
                     </div>
                     {r.comment && <p className="pd-review-comment">{r.comment}</p>}
                     <div className="pd-review-actions">
-                      <button className="pd-action-btn">👍 0</button>
-                      <button className="pd-action-btn">👎 0</button>
+                      <button
+                        className={`pd-action-btn ${votes.voted === "like" ? "pd-action-btn--active" : ""}`}
+                        onClick={() => handleVote(r.feedback_id, "like")}
+                        title="Helpful"
+                      >
+                        <AiOutlineLike size={16} />
+                        <span>{votes.likes}</span>
+                      </button>
+                      <button
+                        className={`pd-action-btn ${votes.voted === "dislike" ? "pd-action-btn--active" : ""}`}
+                        onClick={() => handleVote(r.feedback_id, "dislike")}
+                        title="Not helpful"
+                      >
+                        <AiOutlineDislike size={16} />
+                        <span>{votes.dislikes}</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -361,8 +391,8 @@ function ProductDetail() {
             </div>
           </div>
         )}
+      </div>
 
-      </div >
       <Footer />
     </div>
   );

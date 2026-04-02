@@ -117,7 +117,7 @@ function Cart() {
                   onChange={toggleSelectAll}
                   className="cart-checkbox"
                 />
-                <span>Select All ({cartItems.length} items)</span>
+                <span>Select All items</span>
               </label>
             </div>
           )}
@@ -191,7 +191,7 @@ function Cart() {
             <h2 className="cart-summary-title">Order Summary</h2>
 
             {selectedItems.length === 0 ? (
-              <p className="cart-summary-empty">Select items to see total</p>
+              <p className="cart-summary-empty">Select items to place order</p>
             ) : (
               <div className="cart-summary-rows">
                 <div className="cart-summary-row">
@@ -214,7 +214,7 @@ function Cart() {
               onClick={handleProceed}
               disabled={selectedItems.length === 0}
             >
-              Proceed to Checkout ({selectedItems.length})
+              Proceed to Checkout
             </button>
 
             <button className="cart-continue-link" onClick={() => navigate("/products")}>
