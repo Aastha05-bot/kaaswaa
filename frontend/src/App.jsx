@@ -16,6 +16,7 @@ import StaffManagement from "./pages/StaffManagement";
 import ProductDetail from "./pages/ProductDetail";
 import Wishlist from "./pages/Wishlist";
 import Cart from "./pages/Cart";
+import OrderConfirm from "./pages/OrderConfirm";
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
         <Route path="/categories" element={<Categories />} />
         <Route path="/categories/:id" element={<Categories />} />
         <Route path="/about" element={<AboutUs />} />
+        {/* <Rote path="/order-confirm" element={<OrderConfirm />} /> */}
         <Route path="/staff-management" element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <StaffManagement />
