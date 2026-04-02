@@ -109,31 +109,49 @@ body {
   font-size: 14px;
 }
 
-/*Remember Me */
+/* Remember Me & Forgot Password */
 .form-options {
   display: flex;
   justify-content: space-between;
-  align-items: baseline;
-  font-size: 0.75rem;
+  align-items: center;
+  font-size: 0.85rem;
   width: 100%;
   padding: 0 0.5rem;
+  margin-bottom: 5px;
 }
 
 .checkbox-label {
   display: flex;
-  align-items: baseline;
-  gap: 0.35rem;
+  align-items: center;
+  gap: 0.4rem;
   cursor: pointer;
   color: var(--dark);
   font-weight: 500;
+  line-height: 1;
 }
 
 .checkbox-label input[type="checkbox"] {
-  width: 0.8rem;
-  height: 0.8rem;
-  accent-color: var(--dark-btn);
+  width: 0.9rem;
+  height: 0.9rem;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--dark);
   cursor: pointer;
-  border: 1px solid var(--text-dark);
+  border: 1px solid var(--dark);
+  vertical-align: middle;
+}
+
+.forgot-password-link {
+  color: var(--dark);
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: underline;
+  transition: all 0.2s ease;
+}
+
+.forgot-password-link:hover {
+  color: var(--gray);
+  text-decoration: none;
 }
 
 /* BUTTON */

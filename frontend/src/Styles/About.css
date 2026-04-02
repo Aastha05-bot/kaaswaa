@@ -1,27 +1,17 @@
+:root {
+  --pink: #e85a8a;
+  --pink-light: #f08fb1;
+  --pink-pale: #fff8f9;
+  --pink-soft: #fce4ec;
+  --dark: #3b3b3b;
+  --gray: #777;
+  --white: #ffffff;
+}
 /* Premium About Us Styling */
 .about-page {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   color: #333;
   background-color: #fdfdfd;
-}
-
-/* Hero Section */
-.about-hero {
-  background: linear-gradient(135deg, #ff6699 0%, #ff1a66 100%);
-  color: #fff;
-  padding: 100px 20px;
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-
-.about-hero::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: radial-gradient(circle at top left, rgba(255,255,255,0.15), transparent 40%),
-              radial-gradient(circle at bottom right, rgba(0,0,0,0.1), transparent 50%);
-  pointer-events: none;
 }
 
 .about-hero h1 {
@@ -68,7 +58,7 @@
 
 .about-story-content h2 {
   font-size: 36px;
-  color: #ff3377;
+  color: var(--pink);
   margin-bottom: 25px;
   position: relative;
 }
@@ -80,7 +70,7 @@
   bottom: -10px;
   width: 60px;
   height: 3px;
-  background-color: #ff6699;
+  background-color:var(--pink);
   border-radius: 2px;
 }
 
@@ -114,7 +104,7 @@
   left: -20px;
   right: 20px;
   bottom: 20px;
-  border: 2px dashed #ff99bb;
+  border: 2px dashed var(--pink-light);
   border-radius: 16px;
   z-index: -1;
 }
@@ -146,7 +136,7 @@
   width: 60px;
   height: 60px;
   background-color: #fff0f5;
-  color: #ff3377;
+  color: var(--pink);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -184,7 +174,7 @@
 }
 
 .about-values-list li svg {
-  color: #ff6699;
+  color: var(--pink);
   flex-shrink: 0;
 }
 

@@ -30,6 +30,36 @@ router.get("/:product_id", (req, res) => {
   );
 });
 
+// GET /api/feedback/user/:userId — Fetch reviews submitted by a specific user
+router.get("/user/:userId", verifyToken, (req, res) => {
+  if (parseInt(req.params.userId) !== req.user.id) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+
+  db.query(
+    `SELECT
+       f.feedback_id,
+       f.product_id,
+       f.comment,
+       f.ratings,
+       f.feedback_date,
+       p.product_name,
+       p.image_url
+     FROM feedback f
+     JOIN product p ON f.product_id = p.product_id
+     WHERE f.user_id = ?
+     ORDER BY f.feedback_date DESC`,
+    [req.user.id],
+    (err, results) => {
+      if (err) {
+        console.error("GET /feedback/user", err);
+        return res.status(500).json({ message: "Failed to fetch your reviews" });
+      }
+      res.json(results);
+    }
+  );
+});
+
 // POST /api/feedback — auth required
 router.post("/", verifyToken, (req, res) => {
   const user_id = req.user?.id;

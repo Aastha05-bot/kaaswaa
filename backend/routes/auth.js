@@ -174,6 +174,78 @@ router.post("/login", async (req, res) => {
   return res.status(401).json({ message: "Invalid credentials" });
 });
 
+// FORGOT PASSWORD
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: "Email is required" });
+
+  const tables = ["admins", "staff", "users"];
+  
+  for (const table of tables) {
+    const results = await new Promise((resolve) => {
+      db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, res) => {
+        if (err) resolve([]); else resolve(res);
+      });
+    });
+
+    if (results.length > 0) {
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+      
+      return db.query(
+        `UPDATE ${table} SET otp_code = ?, otp_expires = ? WHERE email = ?`,
+        [otp, otpExpires, email],
+        async (err) => {
+          if (err) return res.status(500).json({ message: "Failed to generate reset code" });
+          try {
+            await sendOTP(email, otp);
+            return res.json({ message: "Password reset verification code sent to your email" });
+          } catch (e) {
+            return res.status(500).json({ message: "Failed to send email" });
+          }
+        }
+      );
+    }
+  }
+
+  return res.status(404).json({ message: "No account found with that email address" });
+});
+
+// RESET PASSWORD
+router.post("/reset-password", async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) return res.status(400).json({ message: "All fields are required" });
+
+  const tables = ["admins", "staff", "users"];
+  
+  for (const table of tables) {
+    const results = await new Promise((resolve) => {
+      db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, res) => {
+        if (err) resolve([]); else resolve(res);
+      });
+    });
+
+    if (results.length > 0) {
+      const user = results[0];
+      if (user.otp_code !== otp) return res.status(400).json({ message: "Invalid verification code" });
+      if (new Date() > new Date(user.otp_expires)) return res.status(400).json({ message: "Verification code expired" });
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      
+      return db.query(
+        `UPDATE ${table} SET password = ?, otp_code = NULL, otp_expires = NULL WHERE email = ?`,
+        [hashedPassword, email],
+        (err) => {
+          if (err) return res.status(500).json({ message: "Failed to reset password" });
+          return res.json({ message: "Password successfully reset! You can now log in." });
+        }
+      );
+    }
+  }
+
+  return res.status(404).json({ message: "User not found" });
+});
+
 // ADMIN — CREATE STAFF
 router.post("/admin/create-staff", verifyAdmin, async (req, res) => {
   const { username, email, password, phone_number } = req.body;
