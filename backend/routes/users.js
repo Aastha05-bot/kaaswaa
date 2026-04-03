@@ -33,19 +33,19 @@ router.get("/profile/:id", verifyToken, (req, res) => {
 // PUT /update/:id — Update Personal Information
 router.put("/update/:id", verifyToken, (req, res) => {
   if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
-  const { full_name, email, phone, address } = req.body;
+  const { full_name, email } = req.body;
   
   if (!full_name || !email) return res.status(400).json({ message: "Missing fields" });
 
   db.query(
-    "UPDATE users SET full_name = ?, email = ?, phone = ?, address = ? WHERE user_id = ?",
-    [full_name, email, phone || null, address || null, req.user.id],
+    "UPDATE users SET full_name = ?, email = ? WHERE user_id = ?",
+    [full_name, email, req.user.id],
     (err) => {
       if (err) {
         console.error("PUT /update error:", err);
         return res.status(500).json({ message: "Database Error" });
       }
-      res.json({ message: "Profile updated successfully", full_name, email, phone, address });
+      res.json({ message: "Profile updated successfully", full_name, email });
     }
   );
 });
@@ -150,6 +150,94 @@ router.post("/notifications/read/:id", verifyToken, (req, res) => {
   db.query("UPDATE notifications SET is_read = TRUE WHERE user_id = ?", [req.user.id], (err) => {
     if (err) return res.status(500).json({ message: "Database Error" });
     res.json({ message: "Notifications marked as read" });
+  });
+});
+
+// ── ADDRESS MANAGEMENT ───────────────────────────────
+
+// GET all addresses for a user
+router.get("/addresses/:id", verifyToken, (req, res) => {
+  if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
+  
+  db.query(
+    "SELECT * FROM user_addresses WHERE user_id = ? ORDER BY is_default DESC, address_id DESC",
+    [req.user.id],
+    (err, results) => {
+      if (err) return res.status(500).json({ message: "Database Error" });
+      res.json(results);
+    }
+  );
+});
+
+// POST new address
+router.post("/addresses", verifyToken, (req, res) => {
+  const { label, full_name, phone, city, address_details, is_default } = req.body;
+  const userId = req.user.id;
+
+  if (!full_name || !phone || !city || !address_details) {
+    return res.status(400).json({ message: "Missing required shipping fields" });
+  }
+
+  const insertAddr = () => {
+    const sql = "INSERT INTO user_addresses (user_id, label, full_name, phone, city, address_details, is_default) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    db.query(sql, [userId, label || 'Other', full_name, phone, city, address_details, is_default || false], (err, result) => {
+      if (err) return res.status(500).json({ message: "Database Error" });
+      res.status(201).json({ message: "Address added", address_id: result.insertId });
+    });
+  };
+
+  if (is_default) {
+    // Clear other defaults first
+    db.query("UPDATE user_addresses SET is_default = FALSE WHERE user_id = ?", [userId], insertAddr);
+  } else {
+    insertAddr();
+  }
+});
+
+// PUT address
+router.put("/addresses/:addrId", verifyToken, (req, res) => {
+  const { label, full_name, phone, city, address_details, is_default } = req.body;
+  const userId = req.user.id;
+  const addrId = req.params.addrId;
+
+  if (!full_name || !phone || !city || !address_details) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const updateAddr = () => {
+    const sql = "UPDATE user_addresses SET label = ?, full_name = ?, phone = ?, city = ?, address_details = ?, is_default = ? WHERE address_id = ? AND user_id = ?";
+    db.query(sql, [label, full_name, phone, city, address_details, is_default, addrId, userId], (err) => {
+      if (err) return res.status(500).json({ message: "Database Error" });
+      res.json({ message: "Address updated" });
+    });
+  };
+
+  if (is_default) {
+    db.query("UPDATE user_addresses SET is_default = FALSE WHERE user_id = ?", [userId], updateAddr);
+  } else {
+    updateAddr();
+  }
+});
+
+// DELETE address
+router.delete("/addresses/:addrId", verifyToken, (req, res) => {
+  db.query("DELETE FROM user_addresses WHERE address_id = ? AND user_id = ?", [req.params.addrId, req.user.id], (err) => {
+    if (err) return res.status(500).json({ message: "Database Error" });
+    res.json({ message: "Address deleted" });
+  });
+});
+
+// SET DEFAULT address
+router.put("/addresses/default/:addrId", verifyToken, (req, res) => {
+  const userId = req.user.id;
+  const addrId = req.params.addrId;
+
+  db.query("UPDATE user_addresses SET is_default = FALSE WHERE user_id = ?", [userId], (err) => {
+    if (err) return res.status(500).json({ message: "Database Error" });
+    db.query("UPDATE user_addresses SET is_default = TRUE WHERE address_id = ? AND user_id = ?", [addrId, userId], (err2) => {
+      if (err2) return res.status(500).json({ message: "Database Error" });
+      res.json({ message: "Default address updated" });
+    });
   });
 });
 

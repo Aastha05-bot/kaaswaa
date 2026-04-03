@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Package, Star, Lock, FileText, LogOut, Trash2, Bell, CheckCircle, Clock, Truck, Home as HomeIcon } from "lucide-react";
+import { User, Package, Star, Lock, FileText, LogOut, Trash2, Bell, CheckCircle, Clock, Truck, Home as HomeIcon, MapPin, MoreVertical, Plus, X } from "lucide-react";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/UserProfile.css";
@@ -27,6 +27,7 @@ function UserProfile() {
     switch (activeTab) {
       case "orders": return <OrdersTab userId={userId} token={token} />;
       case "notifications": return <NotificationsTab userId={userId} token={token} />;
+      case "addresses": return <AddressesTab userId={userId} token={token} />;
       case "reviews": return <ReviewsTab userId={userId} token={token} />;
       case "personal": return <PersonalInfoTab userId={userId} token={token} initName={storedName} initEmail={storedEmail} onLogout={handleLogout} />;
       case "password": return <ChangePasswordTab userId={userId} token={token} />;
@@ -56,6 +57,9 @@ function UserProfile() {
             </button>
             <button className={`profile-menu-item ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => setActiveTab('notifications')}>
               <Bell size={20} /> Notifications
+            </button>
+            <button className={`profile-menu-item ${activeTab === 'addresses' ? 'active' : ''}`} onClick={() => setActiveTab('addresses')}>
+              <MapPin size={20} /> My Addresses
             </button>
             <button className={`profile-menu-item ${activeTab === 'reviews' ? 'active' : ''}`} onClick={() => setActiveTab('reviews')}>
               <Star size={20} /> My Reviews
@@ -327,13 +331,10 @@ function ReviewsTab({ userId, token }) {
 function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
   const [name, setName] = useState(initName);
   const [email, setEmail] = useState(initEmail);
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch precise details from db so phone and address are populated naturally
     fetch(`http://localhost:5000/api/users/profile/${userId}`, {
       headers: { "Authorization": `Bearer ${token}` }
     })
@@ -342,8 +343,6 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
         if (data) {
           setName(data.full_name || name);
           setEmail(data.email || email);
-          setPhone(data.phone || "");
-          setAddress(data.address || "");
         }
         setLoading(false);
       })
@@ -357,7 +356,7 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
       const res = await fetch(`http://localhost:5000/api/users/update/${userId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-        body: JSON.stringify({ full_name: name, email, phone, address })
+        body: JSON.stringify({ full_name: name, email })
       });
       const data = await res.json();
       if (res.ok) {
@@ -400,14 +399,6 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
         <div className="form-group">
           <label>Email Address</label>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </div>
-        <div className="form-group">
-          <label>Phone Number</label>
-          <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 9800000000" />
-        </div>
-        <div className="form-group">
-          <label>Address</label>
-          <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. Kathmandu, Nepal" />
         </div>
         <button type="submit" className="profile-btn">Save Changes</button>
       </form>
@@ -477,6 +468,195 @@ function TermsTab() {
         <h3>3. Orders & Returns</h3>
         <p>Once an order begins processing, it cannot be refunded. Returns are only applicable to damages occurred exclusively during initial delivery transitions.</p>
       </div>
+    </div>
+  );
+}
+
+function AddressesTab({ userId, token }) {
+  const [addresses, setAddresses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [activeMenu, setActiveMenu] = useState(null); // track which card's menu is open
+  const [editingAddr, setEditingAddr] = useState(null); // address being edited
+
+  const [formData, setFormData] = useState({
+    label: "",
+    full_name: "",
+    phone: "",
+    city: "",
+    address_details: "",
+    is_default: false
+  });
+
+  const fetchAddresses = () => {
+    fetch(`http://localhost:5000/api/users/addresses/${userId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => { setAddresses(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchAddresses();
+    const closeMenu = () => setActiveMenu(null);
+    window.addEventListener('click', closeMenu);
+    return () => window.removeEventListener('click', closeMenu);
+  }, [userId, token]);
+
+  const handleOpenModal = (addr = null) => {
+    if (addr) {
+      setEditingAddr(addr);
+      setFormData({
+        label: addr.label || "",
+        full_name: addr.full_name || "",
+        phone: addr.phone || "",
+        city: addr.city || "",
+        address_details: addr.address_details || "",
+        is_default: !!addr.is_default
+      });
+    } else {
+      setEditingAddr(null);
+      setFormData({ label: "", full_name: "", phone: "", city: "", address_details: "", is_default: false });
+    }
+    setShowModal(true);
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    const method = editingAddr ? "PUT" : "POST";
+    const url = editingAddr 
+      ? `http://localhost:5000/api/users/addresses/${editingAddr.address_id}`
+      : "http://localhost:5000/api/users/addresses";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setShowModal(false);
+        fetchAddresses();
+      }
+    } catch(err) { console.error(err); }
+  };
+
+  const setAsDefault = async (addrId) => {
+    try {
+      await fetch(`http://localhost:5000/api/users/addresses/default/${addrId}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      fetchAddresses();
+    } catch(err) { console.error(err); }
+  };
+
+  const deleteAddress = async (addrId) => {
+    if (!window.confirm("Delete this address?")) return;
+    try {
+      await fetch(`http://localhost:5000/api/users/addresses/${addrId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      fetchAddresses();
+    } catch(err) { console.error(err); }
+  };
+
+  if (loading) return <p>Loading addresses...</p>;
+
+  return (
+    <div>
+      <div className="address-tab-header">
+        <h2 className="tab-header" style={{ border: "none", marginBottom: 0, paddingBottom: 0 }}>My Addresses</h2>
+        <button className="add-btn" onClick={() => handleOpenModal()}>
+          <Plus size={18} /> Add Address
+        </button>
+      </div>
+
+      <div className="address-list">
+        {addresses.length === 0 ? (
+          <div className="empty-state"><h3>No addresses added</h3><p>Add a shipping address for a smoother checkout.</p></div>
+        ) : (
+          addresses.map(addr => (
+            <div key={addr.address_id} className="address-card">
+              <div className="address-icon-wrap">
+                <MapPin size={20} />
+              </div>
+              <div className="address-body">
+                <div className="address-top">
+                  <h3 className="address-label">{addr.label}</h3>
+                  {!!addr.is_default && <span className="default-badge">Default Address</span>}
+                </div>
+                <p className="address-details" style={{ fontWeight: 500, color: "#333" }}>{addr.full_name}</p>
+                <p className="address-details">{addr.address_details}</p>
+                <p className="address-details">{addr.city}</p>
+                <p className="address-phone">Alternate No.: {addr.phone}</p>
+              </div>
+              <div className="address-actions" onClick={e => e.stopPropagation()}>
+                <button className="address-menu-btn" onClick={() => setActiveMenu(activeMenu === addr.address_id ? null : addr.address_id)}>
+                  <MoreVertical size={20} />
+                </button>
+                
+                {activeMenu === addr.address_id && (
+                  <div className="action-dropdown shadow-sm">
+                    {!addr.is_default && (
+                      <button className="dropdown-item" onClick={() => { setAsDefault(addr.address_id); setActiveMenu(null); }}>
+                        <CheckCircle size={14} /> Set as Default
+                      </button>
+                    )}
+                    <button className="dropdown-item" onClick={() => { handleOpenModal(addr); setActiveMenu(null); }}>
+                      <Star size={14} /> Edit Address
+                    </button>
+                    <button className="dropdown-item delete" onClick={() => { deleteAddress(addr.address_id); setActiveMenu(null); }}>
+                      <Trash2 size={14} /> Delete Address
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {showModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <button className="modal-close" onClick={() => setShowModal(false)}><X size={24} /></button>
+            <h2 className="modal-title">{editingAddr ? "Edit Address" : "Add New Address"}</h2>
+            <form className="profile-form" style={{ maxWidth: "100%" }} onSubmit={handleFormSubmit}>
+              <div className="form-group">
+                <label>Address Label (e.g. Home, Office)</label>
+                <input type="text" placeholder="e.g. Sundarmarg" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>Receiver's Full Name</label>
+                <input type="text" placeholder="e.g. Palpasa Store" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>Phone Number</label>
+                <input type="tel" placeholder="e.g. 9805807302" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>City</label>
+                <input type="text" placeholder="e.g. Pokhara" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} required />
+              </div>
+              <div className="form-group">
+                <label>Address Details (Ward, Street, Landmark)</label>
+                <input type="text" placeholder="e.g. Chipledhunga, Ward 17" value={formData.address_details} onChange={e => setFormData({...formData, address_details: e.target.value})} required />
+              </div>
+              <div className="checkbox-group" style={{ opacity: editingAddr?.is_default ? 0.5 : 1 }}>
+                <input type="checkbox" checked={formData.is_default} disabled={editingAddr?.is_default} onChange={e => setFormData({...formData, is_default: e.target.checked})} />
+                <label>Set as default shipping address</label>
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="profile-btn btn-danger" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="profile-btn">Save Address</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
