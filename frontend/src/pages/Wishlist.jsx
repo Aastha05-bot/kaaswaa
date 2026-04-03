@@ -8,8 +8,8 @@ import "../Styles/Wishlist.css";
 function Wishlist() {
   const navigate = useNavigate();
 
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
+  const token      = sessionStorage.getItem("token");
+  const username   = sessionStorage.getItem("username");
   const isLoggedIn = !!token;
 
   const { wishlist, loading: ctxLoading, addToCart, toggleWishlist } = useContext(ShopContext);

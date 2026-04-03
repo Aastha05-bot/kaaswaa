@@ -6,9 +6,9 @@ import "../Styles/Payment.css";
 
 function Payment() {
   const navigate   = useNavigate();
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
-  const userId     = localStorage.getItem("user_id");
+  const token      = sessionStorage.getItem("token");
+  const username   = sessionStorage.getItem("username");
+  const userId     = sessionStorage.getItem("user_id");
   const isLoggedIn = !!token;
 
   const [pendingOrder,   setPendingOrder]   = useState(null);
@@ -30,8 +30,8 @@ function Payment() {
 
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login"); return; }
-    const order = JSON.parse(localStorage.getItem("pending_order") || "null");
-    const items = JSON.parse(localStorage.getItem("checkout_items") || "[]");
+    const order = JSON.parse(sessionStorage.getItem("pending_order") || "null");
+    const items = JSON.parse(sessionStorage.getItem("checkout_items") || "[]");
     if (!order || !items.length) { navigate("/cart"); return; }
     setPendingOrder(order);
     setCheckoutItems(items);
@@ -134,12 +134,12 @@ function Payment() {
         body:    JSON.stringify({ product_ids: productIds }),
       });
 
-      // 4. Clean localStorage
-      localStorage.removeItem("checkout_items");
-      localStorage.removeItem("checkout_subtotal");
-      localStorage.removeItem("checkout_shipping");
-      localStorage.removeItem("checkout_total");
-      localStorage.removeItem("pending_order");
+      // 4. Clean sessionStorage
+      sessionStorage.removeItem("checkout_items");
+      sessionStorage.removeItem("checkout_subtotal");
+      sessionStorage.removeItem("checkout_shipping");
+      sessionStorage.removeItem("checkout_total");
+      sessionStorage.removeItem("pending_order");
 
       setOrderId(newOrderId);
       setSuccess(true);

@@ -13,16 +13,21 @@ const BASE = "http://localhost:5000/api";
 
 export default function Staff() {
   const navigate   = useNavigate();
-  const staffName  = localStorage.getItem("username") || "Staff";
-  const token      = localStorage.getItem("token");
+  const staffName  = sessionStorage.getItem("username") || "Staff";
+  const token      = sessionStorage.getItem("token");
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const [activeTab, setActiveTab] = useState("overview");
   const [orders,    setOrders]    = useState([]);
+  const [products,  setProducts]  = useState([]);
   const [search,    setSearch]    = useState("");
   const [toast,     setToast]     = useState("");
+  const [loading,   setLoading]   = useState(false);
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => { 
+    fetchOrders(); 
+    fetchProducts();
+  }, []);
 
   const fetchOrders = () => {
     fetch(`${BASE}/orders`, { headers: authHeader })
@@ -31,14 +36,22 @@ export default function Staff() {
       .catch(() => setOrders([]));
   };
 
+  const fetchProducts = () => {
+    setLoading(true);
+    fetch(`${BASE}/products`)
+      .then(r => r.json())
+      .then(data => { setProducts(Array.isArray(data) ? data : []); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
   };
 
-  const pendingOrders   = orders.filter(o => o.order_status === "Pending").length;
-  const shippedOrders   = orders.filter(o => o.order_status === "Shipped").length;
-  const deliveredOrders = orders.filter(o => o.order_status === "Delivered").length;
+  const pendingOrders   = orders.filter(o => (o.order_status || "").toLowerCase() === "pending").length;
+  const shippedOrders   = orders.filter(o => (o.order_status || "").toLowerCase() === "shipped").length;
+  const deliveredOrders = orders.filter(o => (o.order_status || "").toLowerCase() === "delivered").length;
 
   const handleOrderStatus = async (order_id, status) => {
     try {
@@ -56,17 +69,48 @@ export default function Staff() {
     }
   };
 
-  const handleLogout = () => { localStorage.clear(); navigate("/login"); };
+  const handleStockUpdate = async (product_id, newStock) => {
+    const p = products.find(prod => prod.product_id === product_id);
+    if (!p) return;
+    
+    try {
+      const res = await fetch(`${BASE}/products/${product_id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", ...authHeader },
+        body: JSON.stringify({ ...p, stock: newStock }),
+      });
+      if (res.ok) {
+        setProducts(prev => prev.map(item => item.product_id === product_id ? { ...item, stock: newStock } : item));
+        showToast("Stock updated successfully");
+      }
+    } catch {
+      showToast("Failed to update stock");
+    }
+  };
 
-  const filteredOrders = orders.filter(o =>
-    String(o.order_id).includes(search) ||
-    String(o.user_id).includes(search) ||
-    o.order_status?.toLowerCase().includes(search.toLowerCase())
+  const handleLogout = () => { sessionStorage.clear(); navigate("/login"); };
+
+  const filteredOrders = orders.filter(o => {
+    if (!search) return true;
+    const s = search.toLowerCase();
+    return (
+      String(o.order_id || "").toLowerCase().includes(s) ||
+      String(o.user_id || "").toLowerCase().includes(s) ||
+      String(o.order_status || "").toLowerCase().includes(s) ||
+      String(o.payment_method || "").toLowerCase().includes(s) ||
+      String(o.city || "").toLowerCase().includes(s)
+    );
+  });
+
+  const filteredProducts = products.filter(p =>
+    (p.product_name || "").toLowerCase().includes(search.toLowerCase()) ||
+    (p.category_name || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const navItems = [
-    { key: "overview", label: "Overview", Icon: LayoutDashboard },
-    { key: "orders",   label: "Orders",   Icon: Package         },
+    { key: "overview",  label: "Overview",  Icon: LayoutDashboard },
+    { key: "orders",    label: "Orders",    Icon: Package         },
+    { key: "inventory", label: "Inventory", Icon: Package         },
   ];
 
   return (
@@ -108,7 +152,7 @@ export default function Staff() {
         <div className="admin-topbar">
           <div className="topbar-left">
             <h1 className="admin-page-title">
-              { activeTab === "overview" ? "Overview" : "Orders" }
+              { activeTab === "overview" ? "Overview" : activeTab === "orders" ? "Orders" : "Inventory" }
             </h1>
           </div>
           <div className="topbar-right">
@@ -125,6 +169,47 @@ export default function Staff() {
             )}
           </div>
         </div>
+
+        {/* ── ORDERS ── */}
+        {activeTab === "orders" && (
+          <div className="table-section">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Order ID</th><th>Customer</th><th>Location</th><th>Total</th>
+                  <th>Payment</th><th>Status</th><th>Date</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.map(o => (
+                  <tr key={o.order_id}>
+                    <td className="td-muted">#{o.order_id}</td>
+                    <td className="td-name">User #{o.user_id} - {o.user_name}</td>
+                    <td className="td-muted">{o.city || "—"}</td>
+                    <td>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
+                    <td style={{ textTransform: "capitalize" }}>{o.payment_method || "N/A"}</td>
+                    <td><span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>{o.order_status}</span></td>
+                    <td className="td-muted">{o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}</td>
+                    <td>
+                      <select 
+                        className="status-select"
+                        value={o.order_status || "Pending"}
+                        onChange={(e) => handleOrderStatus(o.order_id, e.target.value)}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Processing">Processing</option>
+                        <option value="Shipped">Shipped</option>
+                        <option value="Delivered">Delivered</option>
+                        <option value="Cancelled">Cancelled</option>
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+                {filteredOrders.length === 0 && <tr><td colSpan={8} className="loading-text">No orders found</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
 
         {/* ── OVERVIEW ── */}
         {activeTab === "overview" && (
@@ -156,7 +241,7 @@ export default function Staff() {
                   {orders.slice(0, 5).map(o => (
                     <tr key={o.order_id}>
                       <td className="td-muted">#{o.order_id}</td>
-                      <td className="td-name">User #{o.user_id}</td>
+                      <td className="td-name">User #{o.user_id} - {o.user_name}</td>
                       <td>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
                       <td><span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>{o.order_status || "—"}</span></td>
                       <td className="td-muted">{o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}</td>
@@ -169,37 +254,51 @@ export default function Staff() {
           </div>
         )}
 
-        {/* ── ORDERS ── */}
-        {activeTab === "orders" && (
+        {/* ── INVENTORY ── */}
+        {activeTab === "inventory" && (
           <div className="table-section">
-            <table className="admin-table">
-              <thead>
-                <tr><th>Order ID</th><th>User ID</th><th>Total</th><th>Status</th><th>Date</th><th>Update</th></tr>
-              </thead>
-              <tbody>
-                {filteredOrders.map(o => (
-                  <tr key={o.order_id}>
-                    <td className="td-muted">#{o.order_id}</td>
-                    <td className="td-name">User #{o.user_id}</td>
-                    <td>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
-                    <td><span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>{o.order_status || "—"}</span></td>
-                    <td className="td-muted">{o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}</td>
-                    <td>
-                      <div className="select-wrap">
-                        <select className="status-select" value={o.order_status || "Pending"} onChange={e => handleOrderStatus(o.order_id, e.target.value)}>
-                          <option>Pending</option>
-                          <option>Shipped</option>
-                          <option>Delivered</option>
-                          <option>Cancelled</option>
-                        </select>
-                        <ChevronDown size={12} className="select-chevron" />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {filteredOrders.length === 0 && <tr><td colSpan={6} className="loading-text">No orders found</td></tr>}
-              </tbody>
-            </table>
+            {loading ? <p className="loading-text">Loading inventory...</p> : (
+              <table className="admin-table">
+                <thead>
+                  <tr><th>Image</th><th>Product Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                  {filteredProducts.map(p => (
+                    <tr key={p.product_id}>
+                      <td><img src={p.image_url || "/placeholder.jpg"} alt={p.product_name} className="table-img" /></td>
+                      <td className="td-name">{p.product_name}</td>
+                      <td className="td-muted">{p.category_name || "—"}</td>
+                      <td>Rs. {parseFloat(p.price).toLocaleString()}</td>
+                      <td>
+                        <input 
+                          type="number" 
+                          className="status-select" 
+                          style={{ width: "80px", padding: "5px" }}
+                          defaultValue={p.stock}
+                          onBlur={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (val !== p.stock) handleStockUpdate(p.product_id, val);
+                          }}
+                        />
+                      </td>
+                      <td>
+                        <button 
+                          className="btn-save" 
+                          style={{ padding: "5px 10px", fontSize: "12px" }}
+                          onClick={(e) => {
+                            const input = e.target.parentElement.parentElement.querySelector('input');
+                            handleStockUpdate(p.product_id, parseInt(input.value));
+                          }}
+                        >
+                          Update
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredProducts.length === 0 && <tr><td colSpan={6} className="loading-text">No products found</td></tr>}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </main>

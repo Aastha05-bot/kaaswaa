@@ -9,8 +9,8 @@ function About() {
   const [username, setUsername] = useState("");
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const uname = localStorage.getItem("username");
+    const token = sessionStorage.getItem("token");
+    const uname = sessionStorage.getItem("username");
     setIsLoggedIn(!!token);
     setUsername(uname || "");
   }, []);

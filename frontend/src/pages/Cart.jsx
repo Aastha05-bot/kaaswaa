@@ -8,8 +8,8 @@ import "../Styles/Cart.css";
 function Cart() {
   const navigate = useNavigate();
 
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
+  const token      = sessionStorage.getItem("token");
+  const username   = sessionStorage.getItem("username");
   const isLoggedIn = !!token;
 
   const { cart, loading: ctxLoading, updateCartQuantity, removeFromCart, toggleWishlist } = useContext(ShopContext);
@@ -56,10 +56,10 @@ function Cart() {
       qty: si.quantity
     }));
 
-    localStorage.setItem("checkout_items",    JSON.stringify(mappedForCheckout));
-    localStorage.setItem("checkout_subtotal", subtotal);
-    localStorage.setItem("checkout_shipping", shipping);
-    localStorage.setItem("checkout_total",    total);
+    sessionStorage.setItem("checkout_items",    JSON.stringify(mappedForCheckout));
+    sessionStorage.setItem("checkout_subtotal", subtotal);
+    sessionStorage.setItem("checkout_shipping", shipping);
+    sessionStorage.setItem("checkout_total",    total);
     navigate("/order-confirm");
   };
 

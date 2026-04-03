@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Package, Star, Lock, FileText, LogOut, Trash2 } from "lucide-react";
+import { User, Package, Star, Lock, FileText, LogOut, Trash2, Bell, CheckCircle, Clock, Truck, Home as HomeIcon } from "lucide-react";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/UserProfile.css";
@@ -9,23 +9,24 @@ function UserProfile() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("orders");
   
-  const token = localStorage.getItem("token");
-  const userId = localStorage.getItem("user_id");
-  const storedName = localStorage.getItem("username") || localStorage.getItem("full_name") || "User";
-  const storedEmail = localStorage.getItem("email") || "";
+  const token = sessionStorage.getItem("token");
+  const userId = sessionStorage.getItem("user_id");
+  const storedName = sessionStorage.getItem("username") || sessionStorage.getItem("full_name") || "User";
+  const storedEmail = sessionStorage.getItem("email") || "";
 
   useEffect(() => {
     if (!token) navigate("/login");
   }, [token, navigate]);
 
   const handleLogout = () => {
-    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   };
 
   const renderContent = () => {
     switch (activeTab) {
       case "orders": return <OrdersTab userId={userId} token={token} />;
+      case "notifications": return <NotificationsTab userId={userId} token={token} />;
       case "reviews": return <ReviewsTab userId={userId} token={token} />;
       case "personal": return <PersonalInfoTab userId={userId} token={token} initName={storedName} initEmail={storedEmail} onLogout={handleLogout} />;
       case "password": return <ChangePasswordTab userId={userId} token={token} />;
@@ -52,6 +53,9 @@ function UserProfile() {
           <nav className="profile-menu">
             <button className={`profile-menu-item ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>
               <Package size={20} /> My Orders
+            </button>
+            <button className={`profile-menu-item ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => setActiveTab('notifications')}>
+              <Bell size={20} /> Notifications
             </button>
             <button className={`profile-menu-item ${activeTab === 'reviews' ? 'active' : ''}`} onClick={() => setActiveTab('reviews')}>
               <Star size={20} /> My Reviews
@@ -87,45 +91,186 @@ function UserProfile() {
 function OrdersTab({ userId, token }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetch(`http://localhost:5000/api/orders/${userId}`, {
       headers: { "Authorization": `Bearer ${token}` }
     })
       .then(res => res.ok ? res.json() : [])
-      .then(data => { setOrders(data); setLoading(false); })
+      .then(data => { setOrders(Array.isArray(data) ? data : []); setLoading(false); })
       .catch(() => setLoading(false));
   }, [userId, token]);
 
+  const handleCancelOrder = async (orderId) => {
+    if (!window.confirm("Are you sure you want to cancel this order?")) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/orders/user/cancel/${orderId}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setOrders(prev => prev.map(o => o.order_id === orderId ? { ...o, order_status: "Cancelled" } : o));
+        setSelectedOrder(prev => ({ ...prev, order_status: "Cancelled" }));
+        alert("Order cancelled successfully.");
+      } else {
+        alert(data.message || "Failed to cancel order.");
+      }
+    } catch (err) {
+      alert("Error connecting to server.");
+    }
+  };
+
   if (loading) return <p>Loading orders...</p>;
   if (orders.length === 0) return <div className="empty-state"><h3>No orders found</h3><p>You haven't placed any orders yet.</p></div>;
+
+  if (selectedOrder) {
+    const status = (selectedOrder.order_status || "Pending").toLowerCase();
+    const steps = [
+      { id: "pending", label: "Pending", icon: Clock },
+      { id: "processing", label: "Processing", icon: CheckCircle },
+      { id: "shipped", label: "Shipped", icon: Truck },
+      { id: "delivered", label: "Delivered", icon: HomeIcon },
+    ];
+
+    const currentIdx = steps.findIndex(s => s.id === status);
+
+    return (
+      <div className="order-details-view">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <button className="profile-btn" style={{ display: "flex", alignItems: "center", gap: "8px" }} onClick={() => setSelectedOrder(null)}>
+            &larr; Back to Orders
+          </button>
+          {status === "pending" && (
+            <button className="profile-btn btn-danger" style={{ padding: "8px 16px" }} onClick={() => handleCancelOrder(selectedOrder.order_id)}>
+              Cancel Order
+            </button>
+          )}
+        </div>
+        
+        <h2 className="tab-header">Order #{selectedOrder.order_id} Details</h2>
+
+        {/* Timeline */}
+        <div className="timeline-container">
+          {steps.map((step, idx) => {
+            const isActive = idx === currentIdx;
+            const isCompleted = idx < currentIdx || status === "delivered";
+            const StepIcon = step.icon;
+            return (
+              <div key={step.id} className={`timeline-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                <div className="step-dot">
+                  <StepIcon size={16} />
+                </div>
+                <div className="step-label">{step.label}</div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="profile-list-item" style={{ flexDirection: "column", alignItems: "stretch" }}>
+          <div className="order-info">
+            <div className="order-badges" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <span className={`badge ${status}`}>Status: {selectedOrder.order_status}</span>
+              <span className="item-date">{selectedOrder.order_date ? new Date(selectedOrder.order_date).toLocaleDateString() : ""}</span>
+            </div>
+            
+            <div style={{ margin: "20px 0", padding: "15px", background: "#fbfbfb", borderRadius: "8px", fontSize: "14px" }}>
+              <p style={{ margin: "0 0 5px" }}><strong>Shipping Address:</strong></p>
+              <p style={{ margin: 0, color: "#666" }}>{selectedOrder.city}, {selectedOrder.address}</p>
+              {selectedOrder.phone && <p style={{ margin: "5px 0 0", color: "#666" }}>Phone: {selectedOrder.phone}</p>}
+            </div>
+
+            <div className="order-items">
+              <h4>Items Ordered:</h4>
+              <ul style={{ listStyle: "none", padding: 0 }}>
+                {(selectedOrder.items || []).map((item, index) => (
+                  <li key={index} className="order-product-row" style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f5f5f5" }}>
+                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                       {item.image_url && <img src={item.image_url} alt="" style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "5px" }} />}
+                       <div>
+                         <p style={{ margin: 0, fontWeight: "500" }}>{item.product_name}</p>
+                         <p style={{ margin: 0, fontSize: "12px", color: "#999" }}>Qty: {item.quantity}</p>
+                       </div>
+                    </div>
+                    <strong>Rs. {parseFloat(item.price * item.quantity).toLocaleString()}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            
+            <div style={{ marginTop: "20px", paddingTop: "15px", borderTop: "2px solid #f0f0f0", textAlign: "right" }}>
+              <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>Subtotal: Rs. {parseFloat(selectedOrder.total - 150).toLocaleString()}</p>
+              <p style={{ margin: "5px 0", fontSize: "14px", color: "#666" }}>Shipping: Rs. 150</p>
+              <h3 style={{ margin: 0, color: "#e85a8a" }}>Total Amount: Rs. {parseFloat(selectedOrder.total || 0).toLocaleString()}</h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <h2 className="tab-header">Order History</h2>
       {orders.map(o => (
         <div key={o.order_id} className="profile-list-item">
-          <div className="order-info">
-            <h3>Order #{o.order_id}</h3>
-            <div className="order-badges">
-              <span className={`badge ${o.order_status?.toLowerCase() || 'pending'}`}>{o.order_status}</span>
+          <div className="order-info" style={{ flex: 1 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
+              <h3 style={{ margin: 0 }}>Order #{o.order_id}</h3>
+              <span className={`badge ${(o.order_status || "").toLowerCase()}`}>{o.order_status}</span>
             </div>
-            <p className="item-date">Placed on: {new Date(o.order_date).toLocaleDateString()}</p>
-            
-            <div className="order-items">
-              <ul>
-                {o.items?.map(item => (
-                  <li key={item.product_id}>
-                    <span>{item.quantity}x {item.product_name}</span>
-                    <span>Rs. {item.price}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <h4 style={{ marginTop: '10px' }}>Total: Rs. {o.total}</h4>
+            <p className="item-date">{new Date(o.order_date).toLocaleDateString()}</p>
+            <h4 style={{ marginTop: '10px', color: "#e85a8a" }}>Rs. {parseFloat(o.total || 0).toLocaleString()}</h4>
           </div>
+          <button className="profile-btn" onClick={() => setSelectedOrder(o)}>View Order</button>
         </div>
       ))}
+    </div>
+  );
+}
+
+function NotificationsTab({ userId, token }) {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`http://localhost:5000/api/users/notifications/${userId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => { setNotifications(data); setLoading(false); markAsRead(); })
+      .catch(() => setLoading(false));
+  }, [userId, token]);
+
+  const markAsRead = () => {
+    fetch(`http://localhost:5000/api/users/notifications/read/${userId}`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` }
+    }).catch(console.error);
+  };
+
+  if (loading) return <p>Loading notifications...</p>;
+  if (notifications.length === 0) return <div className="empty-state"><h3>All caught up!</h3><p>You have no new notifications.</p></div>;
+
+  return (
+    <div>
+      <h2 className="tab-header">Notifications</h2>
+      <div className="notifications-list">
+        {notifications.map(n => (
+          <div key={n.notification_id} className={`notification-item ${!n.is_read ? 'unread' : ''}`}>
+             <div className="notification-icon">
+               <Bell size={18} />
+             </div>
+             <div className="notification-body">
+               <p className="notification-msg">{n.message}</p>
+               <span className="notification-time">{new Date(n.created_at).toLocaleString()}</span>
+             </div>
+             {!n.is_read && <div className="unread-dot"></div>}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -217,8 +362,8 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
       const data = await res.json();
       if (res.ok) {
         setStatus({ type: "success", text: "Profile updated successfully!" });
-        localStorage.setItem("username", name);
-        localStorage.setItem("email", email);
+        sessionStorage.setItem("username", name);
+        sessionStorage.setItem("email", email);
       } else {
         setStatus({ type: "error", text: data.message });
       }

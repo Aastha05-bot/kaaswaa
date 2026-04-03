@@ -59,7 +59,7 @@ router.post("/orders", verifyToken, (req, res) => {
   // 1. Insert into orders
   const orderSql = `
     INSERT INTO orders (user_id, total, order_status)
-    VALUES (?, ?, 'pending')
+    VALUES (?, ?, 'Pending')
   `;
   db.query(orderSql, [user_id, total_amount], (err, orderResult) => {
     if (err) {
@@ -112,67 +112,45 @@ router.post("/orders", verifyToken, (req, res) => {
   });
 });
 
-// ── GET /api/orders/:userId  (protected) ─────────────────
-router.get("/orders/:userId", verifyToken, (req, res) => {
-  if (parseInt(req.params.userId) !== req.user.id) {
-    return res.status(403).json({ message: "Forbidden." });
+// ── GET /api/orders (admin/staff) ────────────────────────
+router.get("/orders", verifyToken, (req, res) => {
+  if (req.user.role === "user") {
+    return res.status(403).json({ message: "Forbidden. Admins only." });
   }
 
   const sql = `
-    SELECT o.order_id, o.order_date, o.order_status, o.total,
-           s.city, s.address, s.phone
+    SELECT o.order_id, o.order_date, o.order_status, o.total, o.user_id,
+           u.full_name AS user_name,
+           s.city, s.address, s.phone,
+           p.payment_method
     FROM orders o
+    JOIN users u ON o.user_id = u.user_id
     LEFT JOIN shipping_info s ON o.order_id = s.order_id
-    WHERE o.user_id = ?
-    ORDER BY o.order_date DESC
+    LEFT JOIN payments p ON o.order_id = p.order_id
+    ORDER BY o.order_id DESC
   `;
-  db.query(sql, [req.params.userId], (err, orders) => {
-    if (err) return res.status(500).json({ message: "Failed to fetch orders." });
-
-    if (orders.length === 0) return res.json([]);
-
-    // Fetch items for all orders in one query
-    const orderIds = orders.map((o) => o.order_id);
-    const itemsSql = `
-      SELECT oi.order_id, oi.quantity, oi.price,
-             p.product_name, p.image_url
-      FROM order_items oi
-      JOIN product p ON oi.product_id = p.product_id
-      WHERE oi.order_id IN (?)
-    `;
-    db.query(itemsSql, [orderIds], (err2, items) => {
-      if (err2) return res.status(500).json({ message: "Failed to fetch order items." });
-
-      const itemsByOrder = {};
-      items.forEach((item) => {
-        if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
-        itemsByOrder[item.order_id].push(item);
-      });
-
-      const result = orders.map((o) => ({
-        ...o,
-        items: itemsByOrder[o.order_id] || [],
-      }));
-
-      res.json(result);
-    });
+  
+  db.query(sql, (err, rows) => {
+    if (err) {
+      console.error("ADMIN ORDERS ERROR:", err);
+      return res.status(500).json({ message: "Database Error", details: err.sqlMessage });
+    }
+    res.json(rows);
   });
 });
 
-// ── GET /api/orders/detail/:orderId  (protected) ─────────
+// ── GET /api/orders/detail/:orderId (protected) ─────────
 router.get("/orders/detail/:orderId", verifyToken, (req, res) => {
   const orderId = req.params.orderId;
-
   db.query("SELECT * FROM orders WHERE order_id = ?", [orderId], (err, orders) => {
     if (err || orders.length === 0) return res.status(404).json({ message: "Order not found." });
-
     const order = orders[0];
-    if (order.user_id !== req.user.id) {
+    if (order.user_id !== req.user.id && req.user.role === "user") {
       return res.status(403).json({ message: "Forbidden." });
     }
-
     db.query(
-      `SELECT oi.*, p.product_name, p.image_url
+      `SELECT oi.order_id, oi.product_id, oi.quantity, oi.price,
+              p.product_name, p.image_url
        FROM order_items oi
        JOIN product p ON oi.product_id = p.product_id
        WHERE oi.order_id = ?`,
@@ -184,25 +162,46 @@ router.get("/orders/detail/:orderId", verifyToken, (req, res) => {
     );
   });
 });
-// ── GET /api/orders (admin/staff) ────────────────────────
-router.get("/orders", verifyToken, (req, res) => {
-  // In a real app we would strictly verify against admin/staff role here,
-  // but we provide all orders for dashboard features if logged in as an employee.
-  if (req.user.role === "user") {
-    return res.status(403).json({ message: "Forbidden. Admins only." });
+
+// ── GET /api/orders/:userId (protected) ─────────────────
+router.get("/orders/:userId", verifyToken, (req, res) => {
+  if (parseInt(req.params.userId) !== req.user.id) {
+    return res.status(403).json({ message: "Forbidden." });
   }
 
   const sql = `
-    SELECT o.order_id, o.order_date, o.order_status, o.total, o.user_id,
-           s.city, s.address, s.phone
+    SELECT o.order_id, o.order_date, o.order_status, o.total,
+           s.city, s.address, s.phone, p.payment_method
     FROM orders o
     LEFT JOIN shipping_info s ON o.order_id = s.order_id
-    ORDER BY o.order_date DESC
+    LEFT JOIN payments p ON o.order_id = p.order_id
+    WHERE o.user_id = ?
+    ORDER BY o.order_id DESC
   `;
-  
-  db.query(sql, (err, orders) => {
-    if (err) return res.status(500).json({ message: "Database error" });
-    res.json(orders);
+  db.query(sql, [req.params.userId], (err, orders) => {
+    if (err) return res.status(500).json({ message: "Failed to fetch orders." });
+    if (orders.length === 0) return res.json([]);
+    const orderIds = orders.map((o) => o.order_id);
+    const itemsSql = `
+      SELECT oi.order_id, oi.product_id, oi.quantity, oi.price,
+             p.product_name, p.image_url
+      FROM order_items oi
+      JOIN product p ON oi.product_id = p.product_id
+      WHERE oi.order_id IN (?)
+    `;
+    db.query(itemsSql, [orderIds], (err2, items) => {
+      if (err2) return res.status(500).json({ message: "Failed to fetch order items." });
+      const itemsByOrder = {};
+      items.forEach((item) => {
+        if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+        itemsByOrder[item.order_id].push(item);
+      });
+      const result = orders.map((o) => ({
+        ...o,
+        items: itemsByOrder[o.order_id] || [],
+      }));
+      res.json(result);
+    });
   });
 });
 
@@ -211,20 +210,49 @@ router.put("/orders/:orderId", verifyToken, (req, res) => {
   if (req.user.role === "user") {
     return res.status(403).json({ message: "Forbidden. Admins only." });
   }
-
   const { order_status } = req.body;
   const { orderId } = req.params;
-
   if (!order_status) return res.status(400).json({ message: "Missing order_status" });
+  db.query("UPDATE orders SET order_status = ? WHERE order_id = ?", [order_status, orderId], (err) => {
+    if (err) return res.status(500).json({ message: "Failed to update order status" });
 
-  db.query(
-    "UPDATE orders SET order_status = ? WHERE order_id = ?",
-    [order_status, orderId],
-    (err) => {
-      if (err) return res.status(500).json({ message: "Failed to update order status" });
-      res.json({ message: "Order updated successfully" });
+    // Fetch user_id for notification
+    db.query("SELECT user_id FROM orders WHERE order_id = ?", [orderId], (err2, rows) => {
+      if (!err2 && rows.length > 0) {
+        const userId = rows[0].user_id;
+        const msg = `Your order #${orderId} status has been updated to: ${order_status}`;
+        db.query("INSERT INTO notifications (user_id, message) VALUES (?, ?)", [userId, msg]);
+      }
+    });
+
+    res.json({ message: "Order updated successfully" });
+  });
+});
+
+// ── PUT /api/orders/user/cancel/:orderId (User can cancel)
+router.put("/orders/user/cancel/:orderId", verifyToken, (req, res) => {
+  const { orderId } = req.params;
+  const userId = req.user.id;
+
+  // 1. Fetch order to verify ownership and status
+  db.query("SELECT * FROM orders WHERE order_id = ?", [orderId], (err, results) => {
+    if (err || results.length === 0) return res.status(404).json({ message: "Order not found." });
+    
+    const order = results[0];
+    if (order.user_id !== userId) return res.status(403).json({ message: "Forbidden. Not your order." });
+    
+    if (order.order_status.toLowerCase() !== "pending") {
+      return res.status(400).json({ message: "Cannot cancel order that is already " + order.order_status });
     }
-  );
+
+    // 2. Update to Cancelled
+    db.query("UPDATE orders SET order_status = 'Cancelled' WHERE order_id = ?", [orderId], (err2) => {
+      if (err2) return res.status(500).json({ message: "Failed to cancel order." });
+      
+      // 3. Optional: Notification for Admin (could be added later)
+      res.json({ message: "Order cancelled successfully." });
+    });
+  });
 });
 
 module.exports = router;

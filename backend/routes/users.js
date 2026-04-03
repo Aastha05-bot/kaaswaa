@@ -74,9 +74,82 @@ router.put("/change-password/:id", verifyToken, async (req, res) => {
 router.delete("/:id", verifyToken, (req, res) => {
   if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
   
-  db.query("DELETE FROM users WHERE user_id = ?", [req.user.id], (err) => {
+  const userId = req.user.id;
+
+  // Step 1: Cleanup orders/order_items/shipping/payments
+  db.query("SELECT order_id FROM orders WHERE user_id = ?", [userId], (err, orderResults) => {
+    if (err) {
+      console.error("Delete: Error fetching orders", err);
+      return res.status(500).json({ message: "Error cleaning up orders" });
+    }
+
+    const orderIds = orderResults.map(o => o.order_id);
+
+    const cleanupOrders = (callback) => {
+      if (orderIds.length === 0) return callback();
+      
+      // Delete order dependents first
+      db.query("DELETE FROM order_items WHERE order_id IN (?)", [orderIds], () => {
+        db.query("DELETE FROM shipping_info WHERE order_id IN (?)", [orderIds], () => {
+          db.query("DELETE FROM payments WHERE order_id IN (?)", [orderIds], () => {
+            db.query("DELETE FROM orders WHERE user_id = ?", [userId], callback);
+          });
+        });
+      });
+    };
+
+    cleanupOrders(() => {
+      // Step 2: Cleanup Carts and cart_items
+      db.query("SELECT cart_id FROM cart WHERE user_id = ?", [userId], (errC, cartRows) => {
+        const cartIds = cartRows.map(c => c.cart_id);
+        
+        const cleanupCart = (cb) => {
+          if (cartIds.length === 0) return cb();
+          db.query("DELETE FROM cart_items WHERE cart_id IN (?)", [cartIds], () => {
+            db.query("DELETE FROM cart WHERE user_id = ?", [userId], cb);
+          });
+        };
+
+        cleanupCart(() => {
+          // Step 3: Cleanup Wishlist and Feedback
+          db.query("DELETE FROM wishlist WHERE user_id = ?", [userId], () => {
+            db.query("DELETE FROM feedback WHERE user_id = ?", [userId], () => {
+              // Final Step: Delete User
+              db.query("DELETE FROM users WHERE user_id = ?", [userId], (errFinal) => {
+                if (errFinal) {
+                  console.error("Delete: Final user delete error", errFinal);
+                  return res.status(500).json({ message: "Error deleting user record" });
+                }
+                res.json({ message: "Account deleted successfully" });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
+// ── GET /notifications/:id  (protected) ────────────────
+router.get("/notifications/:id", verifyToken, (req, res) => {
+  if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
+  
+  db.query(
+    "SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 20",
+    [req.user.id],
+    (err, results) => {
+      if (err) return res.status(500).json({ message: "Database Error" });
+      res.json(results);
+    }
+  );
+});
+
+// ── PUT /notifications/read/:id (protected) ─────────────
+router.post("/notifications/read/:id", verifyToken, (req, res) => {
+  // Marked as read
+  db.query("UPDATE notifications SET is_read = TRUE WHERE user_id = ?", [req.user.id], (err) => {
     if (err) return res.status(500).json({ message: "Database Error" });
-    res.json({ message: "Account deleted successfully" });
+    res.json({ message: "Notifications marked as read" });
   });
 });
 

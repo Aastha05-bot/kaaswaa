@@ -43,11 +43,11 @@ const PAYMENT_METHODS = [
 
 function OrderConfirm() {
   const navigate   = useNavigate();
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
-  const email      = localStorage.getItem("email");
-  const fullName   = localStorage.getItem("full_name") || username || "";
-  const userId     = localStorage.getItem("user_id");
+  const token      = sessionStorage.getItem("token");
+  const username   = sessionStorage.getItem("username");
+  const email      = sessionStorage.getItem("email");
+  const fullName   = sessionStorage.getItem("full_name") || username || "";
+  const userId     = sessionStorage.getItem("user_id");
   const isLoggedIn = !!token;
 
   const [checkoutItems, setCheckoutItems] = useState([]);
@@ -67,10 +67,10 @@ function OrderConfirm() {
 
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login"); return; }
-    const items = JSON.parse(localStorage.getItem("checkout_items") || "[]");
+    const items = JSON.parse(sessionStorage.getItem("checkout_items") || "[]");
     if (!items.length) { navigate("/cart"); return; }
-    const sub = parseFloat(localStorage.getItem("checkout_subtotal") || 0);
-    const shi = parseFloat(localStorage.getItem("checkout_shipping") || 150);
+    const sub = parseFloat(sessionStorage.getItem("checkout_subtotal") || 0);
+    const shi = parseFloat(sessionStorage.getItem("checkout_shipping") || 150);
     setCheckoutItems(items);
     setSubtotal(sub);
     setShipping(shi);
@@ -93,7 +93,7 @@ function OrderConfirm() {
       placeOrder("cod");
     } else {
       // Save shipping details for payment page, then navigate
-      localStorage.setItem("pending_order", JSON.stringify({
+      sessionStorage.setItem("pending_order", JSON.stringify({
         phone, city, address, landmark, note,
         paymentMethod, total, subtotal, shipping,
       }));
@@ -133,19 +133,17 @@ function OrderConfirm() {
       setOrderId(data.order_id);
 
       // Remove bought items from DB cart
-      const productIds = checkoutItems.map((i) => i.product.id);
-      await fetch(`http://localhost:5000/api/cart/${userId}/clear`, {
+      await fetch(`http://localhost:5000/api/cart/clear/${userId}`, {
         method:  "DELETE",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ product_ids: productIds }),
       });
 
-      // Clean up localStorage checkout state
-      localStorage.removeItem("checkout_items");
-      localStorage.removeItem("checkout_subtotal");
-      localStorage.removeItem("checkout_shipping");
-      localStorage.removeItem("checkout_total");
-      localStorage.removeItem("pending_order");
+      // Clean up sessionStorage checkout state
+      sessionStorage.removeItem("checkout_items");
+      sessionStorage.removeItem("checkout_subtotal");
+      sessionStorage.removeItem("checkout_shipping");
+      sessionStorage.removeItem("checkout_total");
+      sessionStorage.removeItem("pending_order");
 
     } catch (err) {
       alert(err.message || "Could not place order. Please try again.");
@@ -170,7 +168,7 @@ function OrderConfirm() {
           <p>Thank you, <strong>{fullName || username}</strong>! Your order #{orderId} has been received.</p>
           <div className="oc-success-actions">
             <button className="oc-btn-primary" onClick={() => navigate("/products")}>Continue Shopping</button>
-            <button className="oc-btn-outline" onClick={() => navigate("/orders")}>View My Orders</button>
+            <button className="oc-btn-outline" onClick={() => navigate("/profile")}>View My Orders</button>
           </div>
         </div>
         <Footer />

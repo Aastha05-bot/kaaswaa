@@ -11,7 +11,7 @@ const BASE = "http://localhost:5000/api";
 
 export default function AdminDashboard() {
   const navigate   = useNavigate();
-  const token      = localStorage.getItem("token");
+  const token      = sessionStorage.getItem("token");
   const authHeader = { Authorization: `Bearer ${token}` };
 
   const [activeTab,      setActiveTab]      = useState("overview");
@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const [editProduct,    setEditProduct]    = useState(null);
   const [loading,        setLoading]        = useState(false);
   const [toast,          setToast]          = useState("");
+  const [categories,     setCategories]     = useState([]);
 
   const [form, setForm] = useState({
     product_name: "", description: "", price: "",
@@ -40,7 +41,15 @@ export default function AdminDashboard() {
     fetchOrders();
     fetchUsers();
     fetchStaff();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = () => {
+    fetch(`${BASE}/categories`)
+      .then(r => r.json())
+      .then(data => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => setCategories([]));
+  };
 
   const fetchProducts = () => {
     setLoading(true);
@@ -77,15 +86,17 @@ export default function AdminDashboard() {
   };
 
   // ── Stats ──────────────────────────────────────────────
-  const totalRevenue  = orders.filter(o => o.order_status === "Delivered").reduce((s, o) => s + parseFloat(o.total || 0), 0);
+  const totalRevenue  = orders
+    .filter(o => o.order_status?.toLowerCase() === "delivered")
+    .reduce((s, o) => s + parseFloat(o.total || 0), 0);
   const totalOrders   = orders.length;
-  const pendingOrders = orders.filter(o => o.order_status === "Pending").length;
+  const pendingOrders = orders.filter(o => o.order_status?.toLowerCase() === "pending").length;
   const totalUsers    = users.length;
 
   // ── Product CRUD ───────────────────────────────────────
   const openAddModal = () => {
     setEditProduct(null);
-    setForm({ product_name: "", description: "", price: "", category_id: "", tag: "", image_url: "" });
+    setForm({ product_name: "", description: "", price: "", stock: 0, category_id: "", tag: "", image_url: "" });
     setShowModal(true);
   };
 
@@ -95,6 +106,7 @@ export default function AdminDashboard() {
       product_name: p.product_name,
       description:  p.description || "",
       price:        p.price,
+      stock:        p.stock || 0,
       category_id:  p.category_id || "",
       tag:          p.tag || "",
       image_url:    p.image_url || "",
@@ -175,7 +187,7 @@ export default function AdminDashboard() {
     } catch { showToast("Failed to delete staff"); }
   };
 
-  const handleLogout = () => { localStorage.clear(); navigate("/login"); };
+  const handleLogout = () => { sessionStorage.clear(); navigate("/login"); };
 
   // ── Filtered lists ─────────────────────────────────────
   const filteredProducts = products.filter(p =>
@@ -318,7 +330,7 @@ export default function AdminDashboard() {
             {loading ? <p className="loading-text">Loading…</p> : (
               <table className="admin-table">
                 <thead>
-                  <tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Tag</th><th>Actions</th></tr>
+                  <tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Tag</th><th>Actions</th></tr>
                 </thead>
                 <tbody>
                   {filteredProducts.map(p => (
@@ -327,6 +339,7 @@ export default function AdminDashboard() {
                       <td className="td-name">{p.product_name}</td>
                       <td className="td-muted">{p.category_name || "—"}</td>
                       <td>Rs. {parseFloat(p.price).toLocaleString()}</td>
+                      <td>{p.stock}</td>
                       <td>{p.tag ? <span className={`tag-pill tag-${p.tag.toLowerCase().replace(/\s+/g, "")}`}>{p.tag}</span> : <span className="td-muted">—</span>}</td>
                       <td>
                         <div className="action-btns">
@@ -336,7 +349,7 @@ export default function AdminDashboard() {
                       </td>
                     </tr>
                   ))}
-                  {filteredProducts.length === 0 && !loading && <tr><td colSpan={6} className="loading-text">No products found</td></tr>}
+                  {filteredProducts.length === 0 && !loading && <tr><td colSpan={7} className="loading-text">No products found</td></tr>}
                 </tbody>
               </table>
             )}
@@ -348,27 +361,17 @@ export default function AdminDashboard() {
           <div className="table-section">
             <table className="admin-table">
               <thead>
-                <tr><th>Order ID</th><th>User ID</th><th>Total</th><th>Status</th><th>Date</th><th>Update</th></tr>
+                <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th></tr>
               </thead>
               <tbody>
                 {filteredOrders.map(o => (
                   <tr key={o.order_id}>
                     <td className="td-muted">#{o.order_id}</td>
-                    <td className="td-name">User #{o.user_id}</td>
+                    <td className="td-name">User #{o.user_id} - {o.user_name}</td>
                     <td>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
+                    <td><span style={{ textTransform: "capitalize" }}>{o.payment_method || "N/A"}</span></td>
                     <td><span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>{o.order_status || "—"}</span></td>
                     <td className="td-muted">{o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}</td>
-                    <td>
-                      <div className="select-wrap">
-                        <select className="status-select" value={o.order_status || "Pending"} onChange={e => handleOrderStatus(o.order_id, e.target.value)}>
-                          <option>Pending</option>
-                          <option>Shipped</option>
-                          <option>Delivered</option>
-                          <option>Cancelled</option>
-                        </select>
-                        <ChevronDown size={12} className="select-chevron" />
-                      </div>
-                    </td>
                   </tr>
                 ))}
                 {filteredOrders.length === 0 && <tr><td colSpan={6} className="loading-text">No orders found</td></tr>}
@@ -452,8 +455,20 @@ export default function AdminDashboard() {
                   <input type="number" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="450" />
                 </div>
                 <div className="form-group">
-                  <label>Category ID</label>
-                  <input type="number" value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })} placeholder="1" />
+                  <label>Category</label>
+                  <select 
+                    value={form.category_id} 
+                    onChange={e => setForm({ ...form, category_id: e.target.value })}
+                  >
+                    <option value="">Select Category</option>
+                    {categories.map(c => (
+                      <option key={c.category_id} value={c.category_id}>{c.category_name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Stock</label>
+                  <input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} placeholder="10" />
                 </div>
               </div>
               <div className="form-row">

@@ -4,16 +4,16 @@ import { useAuth } from "./AuthContext";
 export const ShopContext = createContext();
 
 export const ShopProvider = ({ children }) => {
-  const { user } = useAuth(); // Or we can rely on localStorage token
+  const { user } = useAuth(); // Or we can rely on sessionStorage token
   
-  const token = localStorage.getItem("token");
-  const userId = localStorage.getItem("user_id"); // Assuming user_id is in localStorage or token
+  const token = sessionStorage.getItem("token");
+  const userId = sessionStorage.getItem("user_id"); // Assuming user_id is in sessionStorage or token
   
   const [cart, setCart] = useState([]);
   const [wishlist, setWishlist] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Helper to parse JWT if user_id is not in localStorage directly
+  // Helper to parse JWT if user_id is not in sessionStorage directly
   const getUserId = () => {
     if (userId) return userId;
     if (!token) return null;

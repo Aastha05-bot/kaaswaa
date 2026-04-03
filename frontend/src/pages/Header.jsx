@@ -13,8 +13,8 @@ function Header({ isLoggedIn, username }) {
   const { wishlist, cartItemCount } = useContext(ShopContext);
 
   // If props aren't passed (some pages might not), grab from local storage
-  const isAuth = isLoggedIn !== undefined ? isLoggedIn : !!localStorage.getItem("token");
-  const userDisp = username || localStorage.getItem("username");
+  const isAuth = isLoggedIn !== undefined ? isLoggedIn : !!sessionStorage.getItem("token");
+  const userDisp = username || sessionStorage.getItem("username");
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -28,7 +28,7 @@ function Header({ isLoggedIn, username }) {
   }, []);
 
   const handleLogout = () => {
-    localStorage.clear();
+    sessionStorage.clear();
     navigate("/login");
   };
 

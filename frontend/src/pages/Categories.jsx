@@ -9,8 +9,8 @@ function Categories() {
   const navigate = useNavigate();
   const { id } = useParams();
 
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
+  const token      = sessionStorage.getItem("token");
+  const username   = sessionStorage.getItem("username");
   const isLoggedIn = !!token;
 
   const [categories,     setCategories]     = useState([]);

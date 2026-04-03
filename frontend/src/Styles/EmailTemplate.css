@@ -1,6 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@300;400;700&display=swap');
+
+:root {
+  --pink: #e85a8a;
+  --pink-light: #f08fb1;
+  --pink-pale: #fff8f9;
+  --pink-soft: #fce4ec;
+  --dark: #3b3b3b;
+  --gray: #777;
+  --white: #ffffff;
+}
+
 .email-page-wrapper {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  background-color: #f0f0f0;
+  font-family: sans-serif;
+  background-color: var(--pink-pale);
   min-height: 100vh;
   padding: 40px 20px;
   display: flex;
@@ -9,77 +21,153 @@
 }
 
 .email-preview-container {
-  max-width: 600px;
+  max-width: 560px;
   width: 100%;
-  margin: 0 auto;
-  background-color: #ffffff;
-  border: 1px solid #ffebf0;
-  border-radius: 12px;
+  background: var(--white);
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 15px rgba(255, 102, 153, 0.1);
+  border: 1px solid var(--pink-soft);
 }
 
+/* Header */
 .email-preview-header {
-  background-color: #ffffff;
-  padding: 40px 20px 20px;
+  background: var(--pink);
+  padding: 44px 32px 36px;
   text-align: center;
-  color: #ff3377;
-  border-bottom: 2px solid #fff0f5;
+}
+
+.email-header-pill {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 50px;
+  padding: 5px 16px;
+  margin-bottom: 16px;
+}
+
+.email-header-pill span {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  letter-spacing: 3px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .email-preview-header h1 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: bold;
-  letter-spacing: 2px;
+  color: var(--white);
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 6px;
 }
 
 .email-preview-header p {
-  margin: 10px 0 0;
-  font-size: 14px;
-  font-weight: 500;
-  color: #ff99bb;
-  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 13px;
+  margin: 0;
+  letter-spacing: 0.5px;
 }
 
+/* Content */
 .email-preview-content {
-  padding: 40px 30px;
+  padding: 44px 40px 36px;
   text-align: center;
-  color: #333333;
 }
 
 .email-preview-content p {
-  font-size: 16px;
-  line-height: 1.6;
-  margin: 0 0 20px;
-  color: #555555;
+  color: var(--gray);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 0 0 28px;
 }
 
+.email-preview-content p strong {
+  color: var(--pink);
+}
+
+/* OTP Box */
 .email-otp-box {
-  background-color: #ffffff;
-  border: 2px dashed #ff6699;
-  padding: 25px;
-  margin: 30px auto;
-  max-width: 300px;
-  border-radius: 8px;
+  background: var(--pink-pale);
+  border: 1.5px dashed var(--pink-light);
+  border-radius: 12px;
+  padding: 28px 24px;
+  margin: 0 auto 32px;
+  max-width: 280px;
+}
+
+.email-otp-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--pink-light);
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-bottom: 12px;
 }
 
 .email-otp-code {
-  font-size: 34px;
-  font-weight: bold;
-  letter-spacing: 8px;
-  color: #ff3377;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 10px;
+  color: var(--pink);
+  font-variant-numeric: tabular-nums;
   margin: 0;
 }
 
-.email-preview-footer {
-  background-color: #ffffff;
-  padding: 25px;
-  text-align: center;
+.email-otp-expire {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 14px;
+}
+
+.email-otp-expire svg {
+  flex-shrink: 0;
+}
+
+.email-otp-expire span {
+  font-size: 12px;
+  color: var(--pink-light);
+}
+
+/* Info Box */
+.email-info-box {
+  background: var(--pink-soft);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  text-align: left;
+}
+
+.email-info-box svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.email-info-box span {
   font-size: 13px;
-  color: #888888;
+  color: var(--gray);
+  line-height: 1.6;
+}
+
+/* Footer */
+.email-preview-footer {
+  border-top: 1px solid var(--pink-soft);
+  padding: 22px 32px;
+  text-align: center;
+  background: var(--pink-pale);
+}
+
+.email-preview-footer .email-footer-brand {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--pink);
+  margin: 0 0 4px;
 }
 
 .email-preview-footer p {
-  margin: 5px 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--pink-light);
 }

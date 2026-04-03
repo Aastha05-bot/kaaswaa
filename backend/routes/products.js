@@ -5,22 +5,20 @@ const db = require("../db");
 // GET all products with category name
 router.get("/products", (req, res) => {
   const sql = `
-    SELECT 
-      p.product_id,
-      p.product_name,
-      p.description,
-      p.price,
-      p.tag,
-      p.image_url,
-      c.category_name
+    SELECT p.*, c.category_name
     FROM product p
     LEFT JOIN category c ON p.category_id = c.category_id
   `;
   db.query(sql, (err, results) => {
-    if (err) {
-      console.error("Error fetching products:", err);
-      return res.status(500).json({ message: "Failed to fetch products" });
-    }
+    if (err) return res.status(500).json({ message: "Failed to fetch products" });
+    res.json(results);
+  });
+});
+
+// GET all categories
+router.get("/categories", (req, res) => {
+  db.query("SELECT * FROM category", (err, results) => {
+    if (err) return res.status(500).json({ message: "Failed to fetch categories" });
     res.json(results);
   });
 });
@@ -33,6 +31,7 @@ router.get("/products/:id", (req, res) => {
       p.product_name,
       p.description,
       p.price,
+      p.stock,
       p.tag,
       p.image_url,
       c.category_name
@@ -53,18 +52,18 @@ router.get("/products/:id", (req, res) => {
 });
 // POST new product
 router.post("/products", (req, res) => {
-  const { product_name, description, price, category_id, tag, image_url } = req.body;
+  const { product_name, description, price, stock, category_id, tag, image_url } = req.body;
   
   if (!product_name || !price) {
     return res.status(400).json({ message: "Product name and price are required" });
   }
 
   const sql = `
-    INSERT INTO product (product_name, description, price, category_id, tag, image_url)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO product (product_name, description, price, stock, category_id, tag, image_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `;
   
-  db.query(sql, [product_name, description || null, price, category_id || null, tag || null, image_url || null], (err, result) => {
+  db.query(sql, [product_name, description || null, price, stock || 0, category_id || null, tag || null, image_url || null], (err, result) => {
     if (err) {
       console.error("Error creating product:", err);
       return res.status(500).json({ message: "Failed to create product" });
@@ -75,7 +74,7 @@ router.post("/products", (req, res) => {
 
 // PUT update product
 router.put("/products/:id", (req, res) => {
-  const { product_name, description, price, category_id, tag, image_url } = req.body;
+  const { product_name, description, price, stock, category_id, tag, image_url } = req.body;
   const productId = req.params.id;
 
   if (!product_name || !price) {
@@ -84,11 +83,11 @@ router.put("/products/:id", (req, res) => {
 
   const sql = `
     UPDATE product 
-    SET product_name = ?, description = ?, price = ?, category_id = ?, tag = ?, image_url = ?
+    SET product_name = ?, description = ?, price = ?, stock = ?, category_id = ?, tag = ?, image_url = ?
     WHERE product_id = ?
   `;
 
-  db.query(sql, [product_name, description || null, price, category_id || null, tag || null, image_url || null, productId], (err, result) => {
+  db.query(sql, [product_name, description || null, price, stock || 0, category_id || null, tag || null, image_url || null, productId], (err, result) => {
     if (err) {
       console.error("Error updating product:", err);
       return res.status(500).json({ message: "Failed to update product" });

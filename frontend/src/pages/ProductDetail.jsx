@@ -11,8 +11,8 @@ const BASE = "http://localhost:5000/api";
 function ProductDetail() {
   const { id }     = useParams();
   const navigate   = useNavigate();
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
+  const token      = sessionStorage.getItem("token");
+  const username   = sessionStorage.getItem("username");
   const isLoggedIn = !!token;
   const authHeader = { Authorization: `Bearer ${token}` };
 
@@ -321,7 +321,7 @@ function ProductDetail() {
                   onClick={() => navigate(`/product/${rec.product_id}`)}
                   role="button"
                   tabIndex={0}
-                  onKeyDown={(e) => e.key === "Enter" && navigate(`/products/${rec.product_id}`)}
+                  onKeyDown={(e) => e.key === "Enter" && navigate(`/product/${rec.product_id}`)}
                 >
                   <div className="pd-reco-img">
                     <img

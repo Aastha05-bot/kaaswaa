@@ -20,8 +20,8 @@ function Products() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const token      = localStorage.getItem("token");
-  const username   = localStorage.getItem("username");
+  const token      = sessionStorage.getItem("token");
+  const username   = sessionStorage.getItem("username");
   const isLoggedIn = !!token;
 
   const search = new URLSearchParams(location.search).get("search") || "";
