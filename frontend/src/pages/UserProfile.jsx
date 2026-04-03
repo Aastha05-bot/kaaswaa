@@ -89,7 +89,7 @@ function OrdersTab({ userId, token }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/orders/orders/${userId}`, {
+    fetch(`http://localhost:5000/api/orders/${userId}`, {
       headers: { "Authorization": `Bearer ${token}` }
     })
       .then(res => res.ok ? res.json() : [])

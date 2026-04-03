@@ -184,5 +184,47 @@ router.get("/orders/detail/:orderId", verifyToken, (req, res) => {
     );
   });
 });
+// ── GET /api/orders (admin/staff) ────────────────────────
+router.get("/orders", verifyToken, (req, res) => {
+  // In a real app we would strictly verify against admin/staff role here,
+  // but we provide all orders for dashboard features if logged in as an employee.
+  if (req.user.role === "user") {
+    return res.status(403).json({ message: "Forbidden. Admins only." });
+  }
+
+  const sql = `
+    SELECT o.order_id, o.order_date, o.order_status, o.total, o.user_id,
+           s.city, s.address, s.phone
+    FROM orders o
+    LEFT JOIN shipping_info s ON o.order_id = s.order_id
+    ORDER BY o.order_date DESC
+  `;
+  
+  db.query(sql, (err, orders) => {
+    if (err) return res.status(500).json({ message: "Database error" });
+    res.json(orders);
+  });
+});
+
+// ── PUT /api/orders/:orderId (admin/staff) ───────────────
+router.put("/orders/:orderId", verifyToken, (req, res) => {
+  if (req.user.role === "user") {
+    return res.status(403).json({ message: "Forbidden. Admins only." });
+  }
+
+  const { order_status } = req.body;
+  const { orderId } = req.params;
+
+  if (!order_status) return res.status(400).json({ message: "Missing order_status" });
+
+  db.query(
+    "UPDATE orders SET order_status = ? WHERE order_id = ?",
+    [order_status, orderId],
+    (err) => {
+      if (err) return res.status(500).json({ message: "Failed to update order status" });
+      res.json({ message: "Order updated successfully" });
+    }
+  );
+});
 
 module.exports = router;

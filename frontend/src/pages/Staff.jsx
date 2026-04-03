@@ -14,6 +14,8 @@ const BASE = "http://localhost:5000/api";
 export default function Staff() {
   const navigate   = useNavigate();
   const staffName  = localStorage.getItem("username") || "Staff";
+  const token      = localStorage.getItem("token");
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const [activeTab, setActiveTab] = useState("overview");
   const [orders,    setOrders]    = useState([]);
@@ -23,7 +25,7 @@ export default function Staff() {
   useEffect(() => { fetchOrders(); }, []);
 
   const fetchOrders = () => {
-    fetch(`${BASE}/orders`)
+    fetch(`${BASE}/orders`, { headers: authHeader })
       .then(r => r.json())
       .then(data => setOrders(Array.isArray(data) ? data : []))
       .catch(() => setOrders([]));
@@ -42,7 +44,7 @@ export default function Staff() {
     try {
       const res = await fetch(`${BASE}/orders/${order_id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({ order_status: status }),
       });
       if (res.ok) {

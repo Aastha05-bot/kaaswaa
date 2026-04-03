@@ -12,7 +12,10 @@ const ADMIN_EMAIL = "kaaswaa45@gmail.com";
 
 // REGISTER
 router.post("/register", async (req, res) => {
-  const { username, email, password } = req.body;
+  const emailRaw = req.body.email || "";
+  const username = req.body.username;
+  const password = req.body.password;
+  const email = emailRaw.trim().toLowerCase();
 
   if (!username || !email || !password)
     return res.status(400).json({ message: "All fields are required" });
@@ -59,7 +62,10 @@ router.post("/register", async (req, res) => {
 
 // VERIFY OTP
 router.post("/verify-otp", (req, res) => {
-  const { email, otp } = req.body;
+  const emailRaw = req.body.email || "";
+  const otpRaw = req.body.otp || "";
+  const email = emailRaw.trim().toLowerCase();
+  const otp = String(otpRaw).trim();
 
   const table = email === ADMIN_EMAIL ? "admins" : "users";
   const idField = table === "admins" ? "admin_id" : "user_id";
@@ -99,7 +105,8 @@ router.post("/verify-otp", (req, res) => {
 
 // RESEND OTP
 router.post("/resend-otp", (req, res) => {
-  const { email } = req.body;
+  const emailRaw = req.body.email || "";
+  const email = emailRaw.trim().toLowerCase();
   const table = email === ADMIN_EMAIL ? "admins" : "users";
 
   db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], async (err, results) => {
@@ -132,7 +139,9 @@ router.post("/resend-otp", (req, res) => {
 
 // LOGIN — checks admins, staff, users tables
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const emailRaw = req.body.email || "";
+  const password = req.body.password;
+  const email = emailRaw.trim().toLowerCase();
 
   if (!email || !password)
     return res.status(400).json({ message: "All fields are required" });
@@ -176,74 +185,96 @@ router.post("/login", async (req, res) => {
 
 // FORGOT PASSWORD
 router.post("/forgot-password", async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: "Email is required" });
+  try {
+    const emailRaw = req.body.email || "";
+    const email = emailRaw.trim().toLowerCase();
+    if (!email) return res.status(400).json({ message: "Email is required" });
 
-  const tables = ["admins", "staff", "users"];
-  
-  for (const table of tables) {
-    const results = await new Promise((resolve) => {
-      db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, res) => {
-        if (err) resolve([]); else resolve(res);
+    const tables = ["admins", "users"];
+    
+    for (const table of tables) {
+      const results = await new Promise((resolve, reject) => {
+        db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, dbRes) => {
+          if (err) reject(err); else resolve(dbRes);
+        });
       });
-    });
 
-    if (results.length > 0) {
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-      
-      return db.query(
-        `UPDATE ${table} SET otp_code = ?, otp_expires = ? WHERE email = ?`,
-        [otp, otpExpires, email],
-        async (err) => {
-          if (err) return res.status(500).json({ message: "Failed to generate reset code" });
-          try {
-            await sendOTP(email, otp);
-            return res.json({ message: "Password reset verification code sent to your email" });
-          } catch (e) {
-            return res.status(500).json({ message: "Failed to send email" });
-          }
+      if (results.length > 0) {
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpExpires = new Date(Date.now() + 10 * 60 * 1000);
+        
+        await new Promise((resolve, reject) => {
+          db.query(
+            `UPDATE ${table} SET otp_code = ?, otp_expires = ? WHERE email = ?`,
+            [otp, otpExpires, email],
+            (err, updateRes) => {
+              if (err) reject(err); else resolve(updateRes);
+            }
+          );
+        });
+
+        try {
+          await sendOTP(email, otp);
+          return res.json({ message: "Password reset verification code sent to your email" });
+        } catch (e) {
+          console.error("Failed to send OTP:", e);
+          return res.status(500).json({ message: "Failed to send email" });
         }
-      );
+      }
     }
-  }
 
-  return res.status(404).json({ message: "No account found with that email address" });
+    return res.status(404).json({ message: "No account found with that email address" });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 // RESET PASSWORD
 router.post("/reset-password", async (req, res) => {
-  const { email, otp, newPassword } = req.body;
-  if (!email || !otp || !newPassword) return res.status(400).json({ message: "All fields are required" });
+  try {
+    const emailRaw = req.body.email || "";
+    const otpRaw = req.body.otp || "";
+    const newPassword = req.body.newPassword;
+    const email = emailRaw.trim().toLowerCase();
+    const otp = String(otpRaw).trim();
+    if (!email || !otp || !newPassword) return res.status(400).json({ message: "All fields are required" });
 
-  const tables = ["admins", "staff", "users"];
-  
-  for (const table of tables) {
-    const results = await new Promise((resolve) => {
-      db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, res) => {
-        if (err) resolve([]); else resolve(res);
+    const tables = ["admins", "users"];
+    
+    for (const table of tables) {
+      const results = await new Promise((resolve, reject) => {
+        db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, dbRes) => {
+          if (err) reject(err); else resolve(dbRes);
+        });
       });
-    });
 
-    if (results.length > 0) {
-      const user = results[0];
-      if (user.otp_code !== otp) return res.status(400).json({ message: "Invalid verification code" });
-      if (new Date() > new Date(user.otp_expires)) return res.status(400).json({ message: "Verification code expired" });
+      if (results.length > 0) {
+        const user = results[0];
+        if (user.otp_code !== otp) return res.status(400).json({ message: "Invalid verification code" });
+        if (new Date() > new Date(user.otp_expires)) return res.status(400).json({ message: "Verification code expired" });
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      
-      return db.query(
-        `UPDATE ${table} SET password = ?, otp_code = NULL, otp_expires = NULL WHERE email = ?`,
-        [hashedPassword, email],
-        (err) => {
-          if (err) return res.status(500).json({ message: "Failed to reset password" });
-          return res.json({ message: "Password successfully reset! You can now log in." });
-        }
-      );
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        await new Promise((resolve, reject) => {
+          db.query(
+            `UPDATE ${table} SET password = ?, otp_code = NULL, otp_expires = NULL WHERE email = ?`,
+            [hashedPassword, email],
+            (err, updateRes) => {
+              if (err) reject(err); else resolve(updateRes);
+            }
+          );
+        });
+
+        return res.json({ message: "Password successfully reset! You can now log in." });
+      }
     }
-  }
 
-  return res.status(404).json({ message: "User not found" });
+    return res.status(404).json({ message: "User not found" });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 // ADMIN — CREATE STAFF

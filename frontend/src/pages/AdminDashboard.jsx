@@ -51,7 +51,7 @@ export default function AdminDashboard() {
   };
 
   const fetchOrders = () => {
-    fetch(`${BASE}/orders`)
+    fetch(`${BASE}/orders`, { headers: authHeader })
       .then(r => r.json())
       .then(data => setOrders(Array.isArray(data) ? data : []))
       .catch(() => setOrders([]));
@@ -134,7 +134,7 @@ export default function AdminDashboard() {
     try {
       const res = await fetch(`${BASE}/orders/${order_id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({ order_status: status }),
       });
       if (res.ok) {
