@@ -42,9 +42,39 @@
   border-bottom: 1px solid #f2f2f2;
 }
 
-.profile-avatar {
+.profile-avatar-container {
+  position: relative;
   width: 80px;
   height: 80px;
+  margin: 0 auto 15px;
+}
+
+.avatar-edit-badge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 26px;
+  height: 26px;
+  background: var(--pink);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px solid white;
+  transition: transform 0.2s;
+  z-index: 5;
+}
+
+.avatar-edit-badge:hover {
+  transform: scale(1.1);
+  background: var(--pink-light);
+}
+
+.profile-avatar {
+  width: 100%;
+  height: 100%;
   background: #ffe6f0;
   color: var(--pink);
   border-radius: 50%;
@@ -53,8 +83,13 @@
   justify-content: center;
   font-size: 32px;
   font-weight: bold;
-  margin: 0 auto 15px;
+  margin: 0;
   text-transform: uppercase;
+  transition: opacity 0.3s;
+}
+
+.profile-avatar-container:hover .profile-avatar {
+  opacity: 0.8;
 }
 
 .profile-name {

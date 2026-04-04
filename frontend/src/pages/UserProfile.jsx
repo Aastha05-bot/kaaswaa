@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Package, Star, Lock, FileText, LogOut, Trash2, Bell, CheckCircle, Clock, Truck, Home as HomeIcon, MapPin, MoreVertical, Plus, X } from "lucide-react";
+import { User, Package, Star, Lock, FileText, LogOut, Trash2, Bell, CheckCircle, Clock, Truck, Home as HomeIcon, MapPin, MoreVertical, Plus, X, Camera } from "lucide-react";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/UserProfile.css";
@@ -37,6 +37,28 @@ function UserProfile() {
     }
   };
 
+  const handlePhotoUploadStandalone = async (file) => {
+    const formData = new FormData();
+    formData.append("profile_pic", file);
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/upload-profile-pic/${userId}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        sessionStorage.setItem("profile_picture", data.filename);
+        window.location.reload(); 
+      } else {
+        alert(data.message || "Failed to upload image");
+      }
+    } catch (err) {
+      alert("Failed to upload image");
+    }
+  };
+
   return (
     <div className="profile-page">
       <Header isLoggedIn={!!token} username={storedName} />
@@ -45,16 +67,31 @@ function UserProfile() {
         {/* SIDEBAR */}
         <aside className="profile-sidebar">
           <div className="profile-avatar-wrap">
-            <div className="profile-avatar" style={{ overflow: 'hidden' }}>
-              {profilePic ? (
-                <img 
-                  src={`http://localhost:5000/uploads/profile_pics/${profilePic}`} 
-                  alt="Profile" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-                />
-              ) : (
-                storedName.charAt(0)
-              )}
+            <div className="profile-avatar-container">
+              <div className="profile-avatar" style={{ overflow: 'hidden' }}>
+                {profilePic ? (
+                  <img 
+                    src={`http://localhost:5000/uploads/profile_pics/${profilePic}`} 
+                    alt="Profile" 
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  />
+                ) : (
+                  storedName.charAt(0)
+                )}
+              </div>
+              <label htmlFor="avatar-upload" className="avatar-edit-badge" title="Edit Profile Picture">
+                <Camera size={14} />
+              </label>
+              <input 
+                id="avatar-upload"
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) handlePhotoUploadStandalone(file);
+                }} 
+                style={{ display: 'none' }}
+              />
             </div>
             <h2 className="profile-name">{storedName}</h2>
             <p className="profile-email">{storedEmail}</p>
