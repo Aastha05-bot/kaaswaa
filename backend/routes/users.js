@@ -2,32 +2,43 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const verifyToken = require("../middleware/auth");
+const verifyAdmin = require("../middleware/verifyAdmin");
 const bcrypt = require("bcryptjs");
 
-// GET all users (only from users table)
-router.get("/", (req, res) => {
-  db.query(
-    "SELECT user_id, full_name, email, phone, created_at FROM users",
-    (err, results) => {
-      if (err) return res.status(500).json({ message: "Database error" });
-      res.json(results);
+// GET all users (with default phone number) — Admin Only
+router.get("/", verifyAdmin, (req, res) => {
+  const sql = `
+    SELECT u.user_id, u.full_name, u.email, ua.phone, u.created_at 
+    FROM users u
+    LEFT JOIN user_addresses ua ON u.user_id = ua.user_id AND ua.is_default = 1
+  `;
+  db.query(sql, (err, results) => {
+    if (err) {
+      console.error("GET / error:", err);
+      return res.status(500).json({ message: "Database error" });
     }
-  );
+    res.json(results);
+  });
 });
 
 // GET /profile/:id — Fetch a single user's profile
 router.get("/profile/:id", verifyToken, (req, res) => {
   if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
   
-  db.query(
-    "SELECT full_name, email, phone, address FROM users WHERE user_id = ?",
-    [req.user.id],
-    (err, results) => {
-      if (err) return res.status(500).json({ message: "Database Error" });
-      if (results.length === 0) return res.status(404).json({ message: "User not found" });
-      res.json(results[0]);
+  const sql = `
+    SELECT u.full_name, u.email, ua.phone, ua.address_details as address 
+    FROM users u
+    LEFT JOIN user_addresses ua ON u.user_id = ua.user_id AND ua.is_default = 1
+    WHERE u.user_id = ?
+  `;
+  db.query(sql, [req.user.id], (err, results) => {
+    if (err) {
+      console.error("GET /profile/:id error:", err);
+      return res.status(500).json({ message: "Database Error" });
     }
-  );
+    if (results.length === 0) return res.status(404).json({ message: "User not found" });
+    res.json(results[0]);
+  });
 });
 
 // PUT /update/:id — Update Personal Information
@@ -70,12 +81,19 @@ router.put("/change-password/:id", verifyToken, async (req, res) => {
   });
 });
 
-// DELETE /:id — Delete Account
+// DELETE /:id — Delete Account (Self)
 router.delete("/:id", verifyToken, (req, res) => {
   if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
-  
-  const userId = req.user.id;
+  deleteUserById(req.params.id, res);
+});
 
+// ADMIN DELETE /admin/delete/:id — Administrative Delete
+router.delete("/admin/delete/:id", verifyAdmin, (req, res) => {
+  deleteUserById(req.params.id, res);
+});
+
+// Helper function to handle user deletion and its cascades
+function deleteUserById(userId, res) {
   // Step 1: Cleanup orders/order_items/shipping/payments
   db.query("SELECT order_id FROM orders WHERE user_id = ?", [userId], (err, orderResults) => {
     if (err) {
@@ -111,16 +129,18 @@ router.delete("/:id", verifyToken, (req, res) => {
         };
 
         cleanupCart(() => {
-          // Step 3: Cleanup Wishlist and Feedback
+          // Step 3: Cleanup Wishlist/Feedback/Addresses
           db.query("DELETE FROM wishlist WHERE user_id = ?", [userId], () => {
             db.query("DELETE FROM feedback WHERE user_id = ?", [userId], () => {
-              // Final Step: Delete User
-              db.query("DELETE FROM users WHERE user_id = ?", [userId], (errFinal) => {
-                if (errFinal) {
-                  console.error("Delete: Final user delete error", errFinal);
-                  return res.status(500).json({ message: "Error deleting user record" });
-                }
-                res.json({ message: "Account deleted successfully" });
+              db.query("DELETE FROM user_addresses WHERE user_id = ?", [userId], () => {
+                // Final Step: Delete User
+                db.query("DELETE FROM users WHERE user_id = ?", [userId], (errFinal) => {
+                  if (errFinal) {
+                    console.error("Delete: Final user delete error", errFinal);
+                    return res.status(500).json({ message: "Error deleting user record" });
+                  }
+                  res.json({ message: "Account deleted successfully" });
+                });
               });
             });
           });
@@ -128,7 +148,7 @@ router.delete("/:id", verifyToken, (req, res) => {
       });
     });
   });
-});
+}
 
 // ── GET /notifications/:id  (protected) ────────────────
 router.get("/notifications/:id", verifyToken, (req, res) => {

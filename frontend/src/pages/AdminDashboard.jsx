@@ -67,7 +67,7 @@ export default function AdminDashboard() {
   };
 
   const fetchUsers = () => {
-    fetch(`${BASE}/users`)
+    fetch(`${BASE}/users`, { headers: authHeader })
       .then(r => r.json())
       .then(data => setUsers(Array.isArray(data) ? data : []))
       .catch(() => setUsers([]));
@@ -185,6 +185,22 @@ export default function AdminDashboard() {
       showToast("Staff account deleted");
       fetchStaff();
     } catch { showToast("Failed to delete staff"); }
+  };
+
+  const handleDeleteUser = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user? This will also remove their orders and addresses.")) return;
+    try {
+      const res = await fetch(`${BASE}/users/admin/delete/${id}`, { 
+        method: "DELETE", 
+        headers: authHeader 
+      });
+      if (res.ok) {
+        showToast("User deleted successfully");
+        fetchUsers();
+      } else {
+        showToast("Failed to delete user");
+      }
+    } catch { showToast("Something went wrong"); }
   };
 
   const handleLogout = () => { sessionStorage.clear(); navigate("/login"); };
@@ -385,7 +401,7 @@ export default function AdminDashboard() {
           <div className="table-section">
             <table className="admin-table">
               <thead>
-                <tr><th>#</th><th>Full Name</th><th>Email</th><th>Phone</th><th>Joined</th></tr>
+                <tr><th>#</th><th>Full Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {filteredUsers.map(u => (
@@ -395,9 +411,14 @@ export default function AdminDashboard() {
                     <td className="td-muted">{u.email}</td>
                     <td className="td-muted">{u.phone || "—"}</td>
                     <td className="td-muted">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</td>
+                    <td>
+                      <button className="btn-icon btn-delete" onClick={() => handleDeleteUser(u.user_id)} title="Delete User">
+                        <Trash2 size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
-                {filteredUsers.length === 0 && <tr><td colSpan={5} className="loading-text">No users found</td></tr>}
+                {filteredUsers.length === 0 && <tr><td colSpan={6} className="loading-text">No users found</td></tr>}
               </tbody>
             </table>
           </div>
