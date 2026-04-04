@@ -6,6 +6,7 @@ import {
   LogOut,
   Search,
   ChevronDown,
+  Eye, X
 } from "lucide-react";
 import "../Styles/AdminDashboard.css";
 
@@ -23,6 +24,7 @@ export default function Staff() {
   const [search, setSearch] = useState("");
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
+  const [viewOrderDetails, setViewOrderDetails] = useState(null);
 
   useEffect(() => {
     fetchOrders();
@@ -37,6 +39,20 @@ export default function Staff() {
       .then(r => r.json())
       .then(data => setOrders(Array.isArray(data) ? data : []))
       .catch(() => setOrders([]));
+  };
+
+  const fetchOrderDetails = async (orderId) => {
+    try {
+      const res = await fetch(`${BASE}/orders/detail/${orderId}`, { headers: authHeader });
+      if (res.ok) {
+        const data = await res.json();
+        setViewOrderDetails(data);
+      } else {
+        showToast("Failed to fetch order details");
+      }
+    } catch {
+      showToast("Failed to fetch order details");
+    }
   };
 
   const fetchProducts = () => {
@@ -211,7 +227,7 @@ export default function Staff() {
                     <td className="td-muted" style={{ whiteSpace: 'nowrap' }}>
                       {o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}
                     </td>
-                    <td>
+                    <td style={{ display: "flex", gap: "5px", alignItems: "center" }}>
                       <select
                         className="status-select"
                         value={o.order_status || "Pending"}
@@ -223,6 +239,9 @@ export default function Staff() {
                         <option value="Delivered">Delivered</option>
                         <option value="Cancelled">Cancelled</option>
                       </select>
+                      <button className="btn-save" style={{ padding: "5px 10px", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }} onClick={() => fetchOrderDetails(o.order_id)}>
+                        <Eye size={14} /> View
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -323,6 +342,53 @@ export default function Staff() {
           </div>
         )}
       </main>
+
+      {/* ── ORDER DETAILS MODAL ── */}
+      {viewOrderDetails && (
+        <div className="modal-overlay" onClick={() => setViewOrderDetails(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%' }}>
+            <div className="modal-header">
+              <h2>Order #{viewOrderDetails.order_id} Details</h2>
+              <button className="modal-close" onClick={() => setViewOrderDetails(null)}>
+                <X size={16} />
+              </button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+              <div style={{ marginBottom: "20px" }}>
+                <p><strong>Status:</strong> <span className={`status-badge status-${(viewOrderDetails.order_status || "").toLowerCase()}`}>{viewOrderDetails.order_status}</span></p>
+                <p><strong>Total:</strong> Rs. {parseFloat(viewOrderDetails.total || 0).toLocaleString()}</p>
+                <p><strong>Date:</strong> {viewOrderDetails.order_date ? new Date(viewOrderDetails.order_date).toLocaleString() : "—"}</p>
+              </div>
+              <h3 style={{ marginBottom: "15px", fontSize: "16px", borderBottom: "1px solid #eee", paddingBottom: "10px" }}>Products</h3>
+              {viewOrderDetails.items && viewOrderDetails.items.length > 0 ? (
+                <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                  {viewOrderDetails.items.map((item, idx) => (
+                    <li key={idx} style={{ display: "flex", gap: "15px", marginBottom: "15px", padding: "10px", backgroundColor: "#f9fafb", borderRadius: "8px" }}>
+                      {item.image_url ? (
+                        <img src={item.image_url} alt={item.product_name} style={{ width: "60px", height: "60px", objectFit: "cover", borderRadius: "6px" }} />
+                      ) : (
+                        <div style={{ width: "60px", height: "60px", backgroundColor: "#e0e0e0", borderRadius: "6px" }} />
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ margin: "0 0 5px", fontWeight: "600", color: "#333" }}>{item.product_name}</p>
+                        <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>Qty: {item.quantity}</p>
+                      </div>
+                      <div style={{ fontWeight: "600", color: "#e85a8a" }}>
+                        Rs. {parseFloat(item.price * item.quantity).toLocaleString()}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No products found for this order.</p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn-cancel" onClick={() => setViewOrderDetails(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── TOAST ── */}
       {toast && <div className="toast">{toast}</div>}
