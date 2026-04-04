@@ -13,6 +13,7 @@ function UserProfile() {
   const userId = sessionStorage.getItem("user_id");
   const storedName = sessionStorage.getItem("username") || sessionStorage.getItem("full_name") || "User";
   const storedEmail = sessionStorage.getItem("email") || "";
+  const profilePic = sessionStorage.getItem("profile_picture");
 
   useEffect(() => {
     if (!token) navigate("/login");
@@ -44,8 +45,16 @@ function UserProfile() {
         {/* SIDEBAR */}
         <aside className="profile-sidebar">
           <div className="profile-avatar-wrap">
-            <div className="profile-avatar">
-              {storedName.charAt(0)}
+            <div className="profile-avatar" style={{ overflow: 'hidden' }}>
+              {profilePic ? (
+                <img 
+                  src={`http://localhost:5000/uploads/profile_pics/${profilePic}`} 
+                  alt="Profile" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              ) : (
+                storedName.charAt(0)
+              )}
             </div>
             <h2 className="profile-name">{storedName}</h2>
             <p className="profile-email">{storedEmail}</p>
@@ -343,11 +352,40 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
         if (data) {
           setName(data.full_name || name);
           setEmail(data.email || email);
+          if (data.profile_picture) {
+            sessionStorage.setItem("profile_picture", data.profile_picture);
+          }
         }
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, [userId, token]);
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("profile_pic", file);
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/upload-profile-pic/${userId}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        sessionStorage.setItem("profile_picture", data.filename);
+        setStatus({ type: "success", text: "Profile picture updated!" });
+        window.location.reload(); // Quick way to refresh all components
+      } else {
+        setStatus({ type: "error", text: data.message });
+      }
+    } catch (err) {
+      setStatus({ type: "error", text: "Failed to upload image" });
+    }
+  };
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -392,6 +430,29 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
       {status && <div className={`form-msg ${status.type}`}>{status.text}</div>}
       
       <form className="profile-form" onSubmit={handleUpdate}>
+        <div className="form-group" style={{ marginBottom: '30px' }}>
+          <label>Profile Picture</label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+            <div className="profile-avatar" style={{ width: '60px', height: '60px', overflow: 'hidden', margin: 0 }}>
+              {sessionStorage.getItem("profile_picture") ? (
+                <img 
+                  src={`http://localhost:5000/uploads/profile_pics/${sessionStorage.getItem("profile_picture")}`} 
+                  alt="Profile" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                />
+              ) : (
+                name.charAt(0)
+              )}
+            </div>
+            <input 
+              type="file" 
+              accept="image/*" 
+              onChange={handlePhotoUpload} 
+              style={{ fontSize: '13px' }}
+            />
+          </div>
+        </div>
+
         <div className="form-group">
           <label>Full Name</label>
           <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />

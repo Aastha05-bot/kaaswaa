@@ -4,11 +4,37 @@ const db = require("../db");
 const verifyToken = require("../middleware/auth");
 const verifyAdmin = require("../middleware/verifyAdmin");
 const bcrypt = require("bcryptjs");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// Configure Multer for profile pictures
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/profile_pics/";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `profile_${req.params.id}_${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+  fileFilter: (req, file, cb) => {
+    const types = /jpeg|jpg|png/;
+    const ext = types.test(path.extname(file.originalname).toLowerCase());
+    if (ext) return cb(null, true);
+    cb(new Error("Only images (jpeg, jpg, png) are allowed"));
+  },
+});
 
 // GET all users (with default phone number) — Admin Only
 router.get("/", verifyAdmin, (req, res) => {
   const sql = `
-    SELECT u.user_id, u.full_name, u.email, ua.phone, u.created_at 
+    SELECT u.user_id, u.full_name, u.email, ua.phone, u.created_at, u.profile_picture 
     FROM users u
     LEFT JOIN user_addresses ua ON u.user_id = ua.user_id AND ua.is_default = 1
   `;
@@ -26,7 +52,7 @@ router.get("/profile/:id", verifyToken, (req, res) => {
   if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
   
   const sql = `
-    SELECT u.full_name, u.email, ua.phone, ua.address_details as address 
+    SELECT u.full_name, u.email, ua.phone, ua.address_details as address, u.profile_picture 
     FROM users u
     LEFT JOIN user_addresses ua ON u.user_id = ua.user_id AND ua.is_default = 1
     WHERE u.user_id = ?
@@ -38,6 +64,18 @@ router.get("/profile/:id", verifyToken, (req, res) => {
     }
     if (results.length === 0) return res.status(404).json({ message: "User not found" });
     res.json(results[0]);
+  });
+});
+
+// POST /upload-profile-pic/:id — Upload profile picture
+router.post("/upload-profile-pic/:id", verifyToken, upload.single("profile_pic"), (req, res) => {
+  if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+  const filename = req.file.filename;
+  db.query("UPDATE users SET profile_picture = ? WHERE user_id = ?", [filename, req.user.id], (err) => {
+    if (err) return res.status(500).json({ message: "Database error" });
+    res.json({ message: "Profile picture updated", filename });
   });
 });
 
