@@ -214,8 +214,8 @@ router.put("/orders/:orderId", verifyToken, (req, res) => {
     db.query("SELECT user_id FROM orders WHERE order_id = ?", [orderId], (err2, rows) => {
       if (!err2 && rows.length > 0) {
         const userId = rows[0].user_id;
-        const msg = `Your order #${orderId} status has been updated to: ${order_status}`;
-        db.query("INSERT INTO notifications (user_id, message) VALUES (?, ?)", [userId, msg]);
+        const msg = order_status === "Shipped" ? "Your order has been shipped" : `Your order #${orderId} status has been updated to: ${order_status}`;
+        db.query("INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)", [userId, msg]);
       }
     });
 

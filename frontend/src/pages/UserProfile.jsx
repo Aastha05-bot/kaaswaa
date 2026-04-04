@@ -16,8 +16,32 @@ function UserProfile() {
   const profilePic = sessionStorage.getItem("profile_picture");
 
   useEffect(() => {
-    if (!token) navigate("/login");
-  }, [token, navigate]);
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
+    // Update browser title based on notifications
+    const fetchNotificationsBasic = async () => {
+      try {
+        const res = await fetch(`http://localhost:5000/api/users/notifications/${userId}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const unreadCount = data.filter(n => !n.is_read).length;
+          document.title = unreadCount > 0 ? `(${unreadCount})` : "Kaa Swaa";
+        }
+      } catch (err) { console.error(err); }
+    };
+
+    fetchNotificationsBasic();
+    const interval = setInterval(fetchNotificationsBasic, 5000);
+    return () => {
+      clearInterval(interval);
+      document.title = "Kaa Swaa"; // Reset on unmount
+    };
+  }, [token, userId, navigate]);
 
   const handleLogout = () => {
     sessionStorage.clear();
@@ -78,7 +102,7 @@ function UserProfile() {
                   storedName.charAt(0)
                 )}
               </div>
-              <label htmlFor="avatar-upload" className="avatar-edit-badge" title="Edit Profile Picture">
+              <label htmlFor="avatar-upload" className="avatar-edit-badge">
                 <Camera size={14} />
               </label>
               <input 
@@ -102,6 +126,7 @@ function UserProfile() {
             </button>
             <button className={`profile-menu-item ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => setActiveTab('notifications')}>
               <Bell size={20} /> Notifications
+              <UnreadCountBadge userId={userId} token={token} />
             </button>
             <button className={`profile-menu-item ${activeTab === 'addresses' ? 'active' : ''}`} onClick={() => setActiveTab('addresses')}>
               <MapPin size={20} /> My Addresses
@@ -144,12 +169,18 @@ function OrdersTab({ userId, token }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/orders/${userId}`, {
-      headers: { "Authorization": `Bearer ${token}` }
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(data => { setOrders(Array.isArray(data) ? data : []); setLoading(false); })
-      .catch(() => setLoading(false));
+    const fetchOrders = () => {
+      fetch(`http://localhost:5000/api/orders/${userId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => { setOrders(Array.isArray(data) ? data : []); setLoading(false); })
+        .catch(() => setLoading(false));
+    };
+
+    fetchOrders();
+    const interval = setInterval(fetchOrders, 5000); // 5s polling
+    return () => clearInterval(interval);
   }, [userId, token]);
 
   const handleCancelOrder = async (orderId) => {
@@ -285,20 +316,33 @@ function NotificationsTab({ userId, token }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/users/notifications/${userId}`, {
-      headers: { "Authorization": `Bearer ${token}` }
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(data => { setNotifications(data); setLoading(false); markAsRead(); })
-      .catch(() => setLoading(false));
+    const fetchNotifications = () => {
+      fetch(`http://localhost:5000/api/users/notifications/${userId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => { setNotifications(data); setLoading(false); })
+        .catch(() => setLoading(false));
+    };
+
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 5000); // 5s polling
+    return () => clearInterval(interval);
   }, [userId, token]);
 
-  const markAsRead = () => {
-    fetch(`http://localhost:5000/api/users/notifications/read/${userId}`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}` }
-    }).catch(console.error);
-  };
+  // Mark cards as read locally and sync with DB when viewing the tab
+  useEffect(() => {
+    if (notifications.some(n => !n.is_read)) {
+      fetch(`http://localhost:5000/api/users/notifications/read/${userId}`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+      .then(() => {
+         setNotifications(prev => prev.map(n => ({...n, is_read: 1})));
+      })
+      .catch(console.error);
+    }
+  }, [userId, token, notifications.length]); // Mark on new notifications or mount
 
   if (loading) return <p>Loading notifications...</p>;
   if (notifications.length === 0) return <div className="empty-state"><h3>All caught up!</h3><p>You have no new notifications.</p></div>;
@@ -755,6 +799,27 @@ function AddressesTab({ userId, token }) {
       )}
     </div>
   );
+}
+
+function UnreadCountBadge({ userId, token }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = () => {
+      fetch(`http://localhost:5000/api/users/notifications/${userId}`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setCount(data.filter(n => !n.is_read).length))
+        .catch(() => setCount(0));
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 5000);
+    return () => clearInterval(interval);
+  }, [userId, token]);
+
+  if (count === 0) return null;
+  return <span className="nav-unread-badge">{count}</span>;
 }
 
 export default UserProfile;

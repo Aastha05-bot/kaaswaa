@@ -8,7 +8,7 @@ import "../Styles/OrderConfirm.css";
 const PAYMENT_METHODS = [
   { id: "cod",    label: "Cash on Delivery", icon: "https://cdn-icons-png.flaticon.com/512/6614/6614969.png" },
   { id: "esewa",  label: "Pay with eSewa",   icon: "https://cdn.esewa.com.np/ui/images/esewa_og.png?111" },
-  { id: "khalti", label: "Pay with Khalti",  icon: "https://khalti.com/static/img/logo1.png" },
+  { id: "khalti", label: "Pay with Khalti",  icon: "https://cpng.pikpng.com/pngl/s/292-2923069_khalti-digital-wallet-logo-khalti-clipart.png" },
 ];
 
 function OrderConfirm() {

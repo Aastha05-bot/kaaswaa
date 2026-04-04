@@ -163,6 +163,22 @@
   border-color: var(--pink);
 }
 
+.nav-unread-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  margin-left: auto;
+  box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3);
+}
+
+.profile-menu-item.active .nav-unread-badge {
+  background: white;
+  color: #ef4444;
+}
+
 .profile-menu-item.logout {
   color: #ef4444;
   margin-top: 20px;
@@ -303,9 +319,8 @@
 }
 
 .profile-list-item:hover {
-  border-color: var(--pink-pale);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-3px);
+  border-color: var(--pink-soft);
+  /* Hover effects removed as per request */
 }
 
 .review-info h3,

@@ -42,6 +42,9 @@ export default function AdminDashboard() {
     fetchUsers();
     fetchStaff();
     fetchCategories();
+
+    const interval = setInterval(fetchOrders, 5000); // 5s polling
+    return () => clearInterval(interval);
   }, []);
 
   const fetchCategories = () => {

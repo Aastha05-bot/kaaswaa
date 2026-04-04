@@ -202,9 +202,10 @@ router.get("/notifications/:id", verifyToken, (req, res) => {
   );
 });
 
-// ── PUT /notifications/read/:id (protected) ─────────────
+// ── POST /notifications/read/:id (protected) ─────────────
 router.post("/notifications/read/:id", verifyToken, (req, res) => {
-  // Marked as read
+  if (parseInt(req.params.id) !== req.user.id) return res.status(403).json({ message: "Forbidden" });
+  
   db.query("UPDATE notifications SET is_read = TRUE WHERE user_id = ?", [req.user.id], (err) => {
     if (err) return res.status(500).json({ message: "Database Error" });
     res.json({ message: "Notifications marked as read" });

@@ -27,6 +27,9 @@ export default function Staff() {
   useEffect(() => {
     fetchOrders();
     fetchProducts();
+
+    const interval = setInterval(fetchOrders, 5000); // 5s polling
+    return () => clearInterval(interval);
   }, []);
 
   const fetchOrders = () => {
