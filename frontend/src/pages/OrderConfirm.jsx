@@ -367,14 +367,6 @@ function OrderConfirm() {
                 {placing ? "Processing..." : "Place Order"}
               </button>
 
-              <div className="vee-points-card">
-                 <div className="vee-icon-box">🏆</div>
-                 <div className="vee-text">
-                    <h4>Rewarded Vee Points</h4>
-                    <p>0</p>
-                 </div>
-              </div>
-              <p className="vee-note">*Note: Vee Points rewarded on your purchase will be added 7 days from the date of delivery due to the refund policy.</p>
             </div>
           </div>
         </div>

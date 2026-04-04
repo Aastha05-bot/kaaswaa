@@ -337,21 +337,6 @@
 .place-order-btn:active { transform: scale(0.98); }
 .place-order-btn:disabled { opacity: 0.7; cursor: not-allowed; }
 
-.vee-points-card {
-  margin-top: 24px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border: 1.5px dashed var(--pink);
-  border-radius: 12px;
-  background: var(--pink-pale);
-}
-.vee-icon-box { font-size: 24px; }
-.vee-text h4 { margin: 0; font-size: 13px; color: #333; }
-.vee-text p { margin: 0; font-weight: 700; color: var(--pink); }
-.vee-note { font-size: 11px; color: #999; line-height: 1.4; margin-top: 12px; }
-
 /* ── Modals ── */
 .oc-modal-overlay {
   position: fixed;
