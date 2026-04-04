@@ -68,12 +68,11 @@ function UserProfile() {
         <aside className="profile-sidebar">
           <div className="profile-avatar-wrap">
             <div className="profile-avatar-container">
-              <div className="profile-avatar" style={{ overflow: 'hidden' }}>
+              <div className="profile-avatar">
                 {profilePic ? (
                   <img 
                     src={`http://localhost:5000/uploads/profile_pics/${profilePic}`} 
                     alt="Profile" 
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                   />
                 ) : (
                   storedName.charAt(0)
@@ -189,12 +188,12 @@ function OrdersTab({ userId, token }) {
 
     return (
       <div className="order-details-view">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <button className="profile-btn" style={{ display: "flex", alignItems: "center", gap: "8px" }} onClick={() => setSelectedOrder(null)}>
+        <div className="order-details-header">
+          <button className="profile-btn back-btn" onClick={() => setSelectedOrder(null)}>
             &larr; Back to Orders
           </button>
           {status === "pending" && (
-            <button className="profile-btn btn-danger" style={{ padding: "8px 16px" }} onClick={() => handleCancelOrder(selectedOrder.order_id)}>
+            <button className="profile-btn btn-danger" onClick={() => handleCancelOrder(selectedOrder.order_id)}>
               Cancel Order
             </button>
           )}
@@ -219,41 +218,41 @@ function OrdersTab({ userId, token }) {
           })}
         </div>
 
-        <div className="profile-list-item" style={{ flexDirection: "column", alignItems: "stretch" }}>
+        <div className="profile-list-item order-details-card">
           <div className="order-info">
-            <div className="order-badges" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="order-badges-wrap">
               <span className={`badge ${status}`}>Status: {selectedOrder.order_status}</span>
               <span className="item-date">{selectedOrder.order_date ? new Date(selectedOrder.order_date).toLocaleDateString() : ""}</span>
             </div>
             
-            <div style={{ margin: "20px 0", padding: "15px", background: "#fbfbfb", borderRadius: "8px", fontSize: "14px" }}>
-              <p style={{ margin: "0 0 5px" }}><strong>Shipping Address:</strong></p>
-              <p style={{ margin: 0, color: "#666" }}>{selectedOrder.city}, {selectedOrder.address}</p>
-              {selectedOrder.phone && <p style={{ margin: "5px 0 0", color: "#666" }}>Phone: {selectedOrder.phone}</p>}
+            <div className="shipping-address-box">
+              <p className="box-title"><strong>Shipping Address:</strong></p>
+              <p className="address-line">{selectedOrder.city}, {selectedOrder.address}</p>
+              {selectedOrder.phone && <p className="phone-line">Phone: {selectedOrder.phone}</p>}
             </div>
 
             <div className="order-items">
               <h4>Items Ordered:</h4>
-              <ul style={{ listStyle: "none", padding: 0 }}>
+              <ul className="items-list">
                 {(selectedOrder.items || []).map((item, index) => (
-                  <li key={index} className="order-product-row" style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: "1px solid #f5f5f5" }}>
-                    <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                       {item.image_url && <img src={item.image_url} alt="" style={{ width: "40px", height: "40px", objectFit: "cover", borderRadius: "5px" }} />}
+                  <li key={index} className="order-product-row">
+                    <div className="product-meta">
+                       {item.image_url && <img src={item.image_url} alt="" className="product-thumb" />}
                        <div>
-                         <p style={{ margin: 0, fontWeight: "500" }}>{item.product_name}</p>
-                         <p style={{ margin: 0, fontSize: "12px", color: "#999" }}>Qty: {item.quantity}</p>
+                         <p className="product-name">{item.product_name}</p>
+                         <p className="product-qty">Qty: {item.quantity}</p>
                        </div>
                     </div>
-                    <strong>Rs. {parseFloat(item.price * item.quantity).toLocaleString()}</strong>
+                    <strong className="product-price">Rs. {parseFloat(item.price * item.quantity).toLocaleString()}</strong>
                   </li>
                 ))}
               </ul>
             </div>
             
-            <div style={{ marginTop: "20px", paddingTop: "15px", borderTop: "2px solid #f0f0f0", textAlign: "right" }}>
-              <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>Subtotal: Rs. {parseFloat(selectedOrder.total - 150).toLocaleString()}</p>
-              <p style={{ margin: "5px 0", fontSize: "14px", color: "#666" }}>Shipping: Rs. 150</p>
-              <h3 style={{ margin: 0, color: "#e85a8a" }}>Total Amount: Rs. {parseFloat(selectedOrder.total || 0).toLocaleString()}</h3>
+            <div className="order-summary-box">
+              <p className="summary-line">Subtotal: Rs. {parseFloat(selectedOrder.total - 150).toLocaleString()}</p>
+              <p className="summary-line">Shipping: Rs. 150</p>
+              <h3 className="total-amount">Total Amount: Rs. {parseFloat(selectedOrder.total || 0).toLocaleString()}</h3>
             </div>
           </div>
         </div>
@@ -467,15 +466,14 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
       {status && <div className={`form-msg ${status.type}`}>{status.text}</div>}
       
       <form className="profile-form" onSubmit={handleUpdate}>
-        <div className="form-group" style={{ marginBottom: '30px' }}>
+        <div className="form-group personal-photo-group">
           <label>Profile Picture</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <div className="profile-avatar" style={{ width: '60px', height: '60px', overflow: 'hidden', margin: 0 }}>
+          <div className="photo-edit-row">
+            <div className="profile-avatar photo-preview">
               {sessionStorage.getItem("profile_picture") ? (
                 <img 
                   src={`http://localhost:5000/uploads/profile_pics/${sessionStorage.getItem("profile_picture")}`} 
                   alt="Profile" 
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
                 />
               ) : (
                 name.charAt(0)
@@ -485,7 +483,7 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
               type="file" 
               accept="image/*" 
               onChange={handlePhotoUpload} 
-              style={{ fontSize: '13px' }}
+              className="photo-input"
             />
           </div>
         </div>
@@ -501,8 +499,8 @@ function PersonalInfoTab({ userId, token, initName, initEmail, onLogout }) {
         <button type="submit" className="profile-btn">Save Changes</button>
       </form>
 
-      <div style={{ marginTop: '50px', paddingTop: '30px', borderTop: '1px solid #ffebee' }}>
-        <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px' }}>Once you delete your account, there is no going back. Please be certain.</p>
+      <div className="danger-zone">
+        <p className="danger-text">Once you delete your account, there is no going back. Please be certain.</p>
         <button className="profile-btn btn-danger" onClick={handleDeleteAccount}>Delete Account</button>
       </div>
     </div>
@@ -666,7 +664,7 @@ function AddressesTab({ userId, token }) {
   return (
     <div>
       <div className="address-tab-header">
-        <h2 className="tab-header" style={{ border: "none", marginBottom: 0, paddingBottom: 0 }}>My Addresses</h2>
+        <h2 className="tab-header no-border">My Addresses</h2>
         <button className="add-btn" onClick={() => handleOpenModal()}>
           <Plus size={18} /> Add Address
         </button>
@@ -686,7 +684,7 @@ function AddressesTab({ userId, token }) {
                   <h3 className="address-label">{addr.label}</h3>
                   {!!addr.is_default && <span className="default-badge">Default Address</span>}
                 </div>
-                <p className="address-details" style={{ fontWeight: 500, color: "#333" }}>{addr.full_name}</p>
+                <p className="address-receiver">{addr.full_name}</p>
                 <p className="address-details">{addr.address_details}</p>
                 <p className="address-details">{addr.city}</p>
                 <p className="address-phone">Alternate No.: {addr.phone}</p>
@@ -722,7 +720,7 @@ function AddressesTab({ userId, token }) {
           <div className="modal-content">
             <button className="modal-close" onClick={() => setShowModal(false)}><X size={24} /></button>
             <h2 className="modal-title">{editingAddr ? "Edit Address" : "Add New Address"}</h2>
-            <form className="profile-form" style={{ maxWidth: "100%" }} onSubmit={handleFormSubmit}>
+            <form className="profile-form modal-form" onSubmit={handleFormSubmit}>
               <div className="form-group">
                 <label>Address Label (e.g. Home, Office)</label>
                 <input type="text" placeholder="e.g. Sundarmarg" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} required />
@@ -743,7 +741,7 @@ function AddressesTab({ userId, token }) {
                 <label>Address Details (Ward, Street, Landmark)</label>
                 <input type="text" placeholder="e.g. Chipledhunga, Ward 17" value={formData.address_details} onChange={e => setFormData({...formData, address_details: e.target.value})} required />
               </div>
-              <div className="checkbox-group" style={{ opacity: editingAddr?.is_default ? 0.5 : 1 }}>
+              <div className={`checkbox-group ${editingAddr?.is_default ? 'disabled' : ''}`}>
                 <input type="checkbox" checked={formData.is_default} disabled={editingAddr?.is_default} onChange={e => setFormData({...formData, is_default: e.target.checked})} />
                 <label>Set as default shipping address</label>
               </div>
