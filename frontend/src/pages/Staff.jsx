@@ -12,20 +12,20 @@ import "../Styles/AdminDashboard.css";
 const BASE = "http://localhost:5000/api";
 
 export default function Staff() {
-  const navigate   = useNavigate();
-  const staffName  = sessionStorage.getItem("username") || "Staff";
-  const token      = sessionStorage.getItem("token");
+  const navigate = useNavigate();
+  const staffName = sessionStorage.getItem("username") || "Staff";
+  const token = sessionStorage.getItem("token");
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
 
   const [activeTab, setActiveTab] = useState("overview");
-  const [orders,    setOrders]    = useState([]);
-  const [products,  setProducts]  = useState([]);
-  const [search,    setSearch]    = useState("");
-  const [toast,     setToast]     = useState("");
-  const [loading,   setLoading]   = useState(false);
+  const [orders, setOrders] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [search, setSearch] = useState("");
+  const [toast, setToast] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => { 
-    fetchOrders(); 
+  useEffect(() => {
+    fetchOrders();
     fetchProducts();
   }, []);
 
@@ -49,8 +49,8 @@ export default function Staff() {
     setTimeout(() => setToast(""), 3000);
   };
 
-  const pendingOrders   = orders.filter(o => (o.order_status || "").toLowerCase() === "pending").length;
-  const shippedOrders   = orders.filter(o => (o.order_status || "").toLowerCase() === "shipped").length;
+  const pendingOrders = orders.filter(o => (o.order_status || "").toLowerCase() === "pending").length;
+  const shippedOrders = orders.filter(o => (o.order_status || "").toLowerCase() === "shipped").length;
   const deliveredOrders = orders.filter(o => (o.order_status || "").toLowerCase() === "delivered").length;
 
   const handleOrderStatus = async (order_id, status) => {
@@ -72,7 +72,7 @@ export default function Staff() {
   const handleStockUpdate = async (product_id, newStock) => {
     const p = products.find(prod => prod.product_id === product_id);
     if (!p) return;
-    
+
     try {
       const res = await fetch(`${BASE}/products/${product_id}`, {
         method: "PUT",
@@ -108,9 +108,9 @@ export default function Staff() {
   );
 
   const navItems = [
-    { key: "overview",  label: "Overview",  Icon: LayoutDashboard },
-    { key: "orders",    label: "Orders",    Icon: Package         },
-    { key: "inventory", label: "Inventory", Icon: Package         },
+    { key: "overview", label: "Overview", Icon: LayoutDashboard },
+    { key: "orders", label: "Orders", Icon: Package },
+    { key: "inventory", label: "Inventory", Icon: Package },
   ];
 
   return (
@@ -152,7 +152,7 @@ export default function Staff() {
         <div className="admin-topbar">
           <div className="topbar-left">
             <h1 className="admin-page-title">
-              { activeTab === "overview" ? "Overview" : activeTab === "orders" ? "Orders" : "Inventory" }
+              {activeTab === "overview" ? "Overview" : activeTab === "orders" ? "Orders" : "Inventory"}
             </h1>
           </div>
           <div className="topbar-right">
@@ -176,22 +176,40 @@ export default function Staff() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Order ID</th><th>Customer</th><th>Location</th><th>Total</th>
-                  <th>Payment</th><th>Status</th><th>Date</th><th>Action</th>
+                  <th>Order ID</th>
+                  <th>User ID</th>
+                  <th>User Name</th>
+                  <th>Address</th>
+                  <th>Phone Number</th>
+                  <th>Total</th>
+                  <th>Payment Method</th>
+                  <th>Order Status</th>
+                  <th>Date</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredOrders.map(o => (
                   <tr key={o.order_id}>
                     <td className="td-muted">#{o.order_id}</td>
-                    <td className="td-name">User #{o.user_id} - {o.user_name}</td>
-                    <td className="td-muted">{o.city || "—"}</td>
-                    <td>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
-                    <td style={{ textTransform: "capitalize" }}>{o.payment_method || "N/A"}</td>
-                    <td><span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>{o.order_status}</span></td>
-                    <td className="td-muted">{o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}</td>
+                    <td className="td-muted">{o.user_id}</td>
+                    <td className="td-name">{o.user_name}</td>
+                    <td className="td-muted">
+                      {o.address ? `${o.address}, ${o.city}` : o.city || "—"}
+                    </td>
+                    <td className="td-name">{o.phone || "—"}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
+                    <td style={{ textTransform: "capitalize", whiteSpace: 'nowrap' }}>{o.payment_method || "N/A"}</td>
                     <td>
-                      <select 
+                      <span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>
+                        {o.order_status}
+                      </span>
+                    </td>
+                    <td className="td-muted" style={{ whiteSpace: 'nowrap' }}>
+                      {o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}
+                    </td>
+                    <td>
+                      <select
                         className="status-select"
                         value={o.order_status || "Pending"}
                         onChange={(e) => handleOrderStatus(o.order_id, e.target.value)}
@@ -205,7 +223,7 @@ export default function Staff() {
                     </td>
                   </tr>
                 ))}
-                {filteredOrders.length === 0 && <tr><td colSpan={8} className="loading-text">No orders found</td></tr>}
+                {filteredOrders.length === 0 && <tr><td colSpan={10} className="loading-text">No orders found</td></tr>}
               </tbody>
             </table>
           </div>
@@ -216,10 +234,10 @@ export default function Staff() {
           <div className="overview-content">
             <div className="stats-grid">
               {[
-                { label: "Total Orders",   value: orders.length,  Icon: Package,          cls: "stat-orders"  },
-                { label: "Pending",        value: pendingOrders,  Icon: LayoutDashboard,  cls: "stat-pending" },
-                { label: "Shipped",        value: shippedOrders,  Icon: Package,          cls: "stat-revenue" },
-                { label: "Delivered",      value: deliveredOrders,Icon: Package,          cls: "stat-users"   },
+                { label: "Total Orders", value: orders.length, Icon: Package, cls: "stat-orders" },
+                { label: "Pending", value: pendingOrders, Icon: LayoutDashboard, cls: "stat-pending" },
+                { label: "Shipped", value: shippedOrders, Icon: Package, cls: "stat-revenue" },
+                { label: "Delivered", value: deliveredOrders, Icon: Package, cls: "stat-users" },
               ].map(({ label, value, Icon, cls }) => (
                 <div key={label} className={`stat-card ${cls}`}>
                   <div className="stat-icon-wrap"><Icon size={18} strokeWidth={1.75} /></div>
@@ -270,9 +288,9 @@ export default function Staff() {
                       <td className="td-muted">{p.category_name || "—"}</td>
                       <td>Rs. {parseFloat(p.price).toLocaleString()}</td>
                       <td>
-                        <input 
-                          type="number" 
-                          className="status-select" 
+                        <input
+                          type="number"
+                          className="status-select"
                           style={{ width: "80px", padding: "5px" }}
                           defaultValue={p.stock}
                           onBlur={(e) => {
@@ -282,8 +300,8 @@ export default function Staff() {
                         />
                       </td>
                       <td>
-                        <button 
-                          className="btn-save" 
+                        <button
+                          className="btn-save"
                           style={{ padding: "5px 10px", fontSize: "12px" }}
                           onClick={(e) => {
                             const input = e.target.parentElement.parentElement.querySelector('input');

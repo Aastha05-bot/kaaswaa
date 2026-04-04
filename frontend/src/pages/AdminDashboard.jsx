@@ -10,22 +10,22 @@ import "../Styles/AdminDashboard.css";
 const BASE = "http://localhost:5000/api";
 
 export default function AdminDashboard() {
-  const navigate   = useNavigate();
-  const token      = sessionStorage.getItem("token");
+  const navigate = useNavigate();
+  const token = sessionStorage.getItem("token");
   const authHeader = { Authorization: `Bearer ${token}` };
 
-  const [activeTab,      setActiveTab]      = useState("overview");
-  const [products,       setProducts]       = useState([]);
-  const [orders,         setOrders]         = useState([]);
-  const [users,          setUsers]          = useState([]);
-  const [staffList,      setStaffList]      = useState([]);
-  const [search,         setSearch]         = useState("");
-  const [showModal,      setShowModal]      = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [products, setProducts] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [staffList, setStaffList] = useState([]);
+  const [search, setSearch] = useState("");
+  const [showModal, setShowModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
-  const [editProduct,    setEditProduct]    = useState(null);
-  const [loading,        setLoading]        = useState(false);
-  const [toast,          setToast]          = useState("");
-  const [categories,     setCategories]     = useState([]);
+  const [editProduct, setEditProduct] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState("");
+  const [categories, setCategories] = useState([]);
 
   const [form, setForm] = useState({
     product_name: "", description: "", price: "",
@@ -86,12 +86,12 @@ export default function AdminDashboard() {
   };
 
   // ── Stats ──────────────────────────────────────────────
-  const totalRevenue  = orders
+  const totalRevenue = orders
     .filter(o => o.order_status?.toLowerCase() === "delivered")
     .reduce((s, o) => s + parseFloat(o.total || 0), 0);
-  const totalOrders   = orders.length;
+  const totalOrders = orders.length;
   const pendingOrders = orders.filter(o => o.order_status?.toLowerCase() === "pending").length;
-  const totalUsers    = users.length;
+  const totalUsers = users.length;
 
   // ── Product CRUD ───────────────────────────────────────
   const openAddModal = () => {
@@ -104,19 +104,19 @@ export default function AdminDashboard() {
     setEditProduct(p);
     setForm({
       product_name: p.product_name,
-      description:  p.description || "",
-      price:        p.price,
-      stock:        p.stock || 0,
-      category_id:  p.category_id || "",
-      tag:          p.tag || "",
-      image_url:    p.image_url || "",
+      description: p.description || "",
+      price: p.price,
+      stock: p.stock || 0,
+      category_id: p.category_id || "",
+      tag: p.tag || "",
+      image_url: p.image_url || "",
     });
     setShowModal(true);
   };
 
   const handleSaveProduct = async () => {
     const method = editProduct ? "PUT" : "POST";
-    const url    = editProduct
+    const url = editProduct
       ? `${BASE}/products/${editProduct.product_id}`
       : `${BASE}/products`;
     try {
@@ -190,9 +190,9 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (id) => {
     if (!window.confirm("Are you sure you want to delete this user? This will also remove their orders and addresses.")) return;
     try {
-      const res = await fetch(`${BASE}/users/admin/delete/${id}`, { 
-        method: "DELETE", 
-        headers: authHeader 
+      const res = await fetch(`${BASE}/users/admin/delete/${id}`, {
+        method: "DELETE",
+        headers: authHeader
       });
       if (res.ok) {
         showToast("User deleted successfully");
@@ -225,10 +225,10 @@ export default function AdminDashboard() {
 
   const navItems = [
     { key: "overview", label: "Overview", Icon: LayoutDashboard },
-    { key: "products", label: "Products", Icon: ShoppingBag     },
-    { key: "orders",   label: "Orders",   Icon: Package         },
-    { key: "users",    label: "Users",    Icon: Users           },
-    { key: "staff",    label: "Staff",    Icon: UserCog         },
+    { key: "products", label: "Products", Icon: ShoppingBag },
+    { key: "orders", label: "Orders", Icon: Package },
+    { key: "users", label: "Users", Icon: Users },
+    { key: "staff", label: "Staff", Icon: UserCog },
   ];
 
   const pageTitles = {
@@ -303,10 +303,10 @@ export default function AdminDashboard() {
           <div className="overview-content">
             <div className="stats-grid">
               {[
-                { label: "Revenue",      value: `Rs. ${totalRevenue.toLocaleString()}`, Icon: DollarSign, cls: "stat-revenue" },
-                { label: "Total Orders", value: totalOrders,                            Icon: TrendingUp, cls: "stat-orders"  },
-                { label: "Pending",      value: pendingOrders,                          Icon: Clock,      cls: "stat-pending" },
-                { label: "Customers",    value: totalUsers,                             Icon: Users,      cls: "stat-users"   },
+                { label: "Revenue", value: `Rs. ${totalRevenue.toLocaleString()}`, Icon: DollarSign, cls: "stat-revenue" },
+                { label: "Total Orders", value: totalOrders, Icon: TrendingUp, cls: "stat-orders" },
+                { label: "Pending", value: pendingOrders, Icon: Clock, cls: "stat-pending" },
+                { label: "Customers", value: totalUsers, Icon: Users, cls: "stat-users" },
               ].map(({ label, value, Icon, cls }) => (
                 <div key={label} className={`stat-card ${cls}`}>
                   <div className="stat-icon-wrap"><Icon size={18} strokeWidth={1.75} /></div>
@@ -377,20 +377,41 @@ export default function AdminDashboard() {
           <div className="table-section">
             <table className="admin-table">
               <thead>
-                <tr><th>Order ID</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th>Date</th></tr>
+                <tr>
+                  <th>Order ID</th>
+                  <th>User ID</th>
+                  <th>User Name</th>
+                  <th>Address</th>
+                  <th>Phone Number</th>
+                  <th>Total</th>
+                  <th>Payment Method</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
               </thead>
               <tbody>
                 {filteredOrders.map(o => (
                   <tr key={o.order_id}>
                     <td className="td-muted">#{o.order_id}</td>
-                    <td className="td-name">User #{o.user_id} - {o.user_name}</td>
-                    <td>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
-                    <td><span style={{ textTransform: "capitalize" }}>{o.payment_method || "N/A"}</span></td>
-                    <td><span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>{o.order_status || "—"}</span></td>
-                    <td className="td-muted">{o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}</td>
+                    <td className="td-muted">{o.user_id}</td>
+                    <td className="td-name">{o.user_name}</td>
+                    <td className="td-muted">
+                      {o.address ? `${o.address}, ${o.city}` : o.city || "—"}
+                    </td>
+                    <td className="td-name">{o.phone || "—"}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>Rs. {parseFloat(o.total || 0).toLocaleString()}</td>
+                    <td style={{ textTransform: "capitalize", whiteSpace: 'nowrap' }}>{o.payment_method || "N/A"}</td>
+                    <td>
+                      <span className={`status-badge status-${(o.order_status || "").toLowerCase()}`}>
+                        {o.order_status || "—"}
+                      </span>
+                    </td>
+                    <td className="td-muted" style={{ whiteSpace: 'nowrap' }}>
+                      {o.order_date ? new Date(o.order_date).toLocaleDateString() : "—"}
+                    </td>
                   </tr>
                 ))}
-                {filteredOrders.length === 0 && <tr><td colSpan={6} className="loading-text">No orders found</td></tr>}
+                {filteredOrders.length === 0 && <tr><td colSpan={9} className="loading-text">No orders found</td></tr>}
               </tbody>
             </table>
           </div>
@@ -477,8 +498,8 @@ export default function AdminDashboard() {
                 </div>
                 <div className="form-group">
                   <label>Category</label>
-                  <select 
-                    value={form.category_id} 
+                  <select
+                    value={form.category_id}
                     onChange={e => setForm({ ...form, category_id: e.target.value })}
                   >
                     <option value="">Select Category</option>

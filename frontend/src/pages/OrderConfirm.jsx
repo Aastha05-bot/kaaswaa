@@ -188,6 +188,10 @@ function OrderConfirm() {
       });
 
       if (!res.ok) throw new Error("Failed to place order.");
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || errData.message || "Order placement failed on server.");
+      }
 
       const data = await res.json();
       setOrderId(data.order_id);
@@ -203,7 +207,8 @@ function OrderConfirm() {
       sessionStorage.removeItem("checkout_shipping");
 
     } catch (err) {
-      alert(err.message || "Failed to place order.");
+      console.error("Order placement error:", err);
+      alert(`Checkout failed: ${err.message}`);
     } finally {
       setPlacing(false);
     }

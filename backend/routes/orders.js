@@ -63,8 +63,11 @@ router.post("/orders", verifyToken, (req, res) => {
   `;
   db.query(orderSql, [user_id, total_amount, address_id], (err, orderResult) => {
     if (err) {
-      console.error("Order insert error:", err);
-      return res.status(500).json({ message: "Failed to create order." });
+      console.error("Order creation master table failed:", err);
+      return res.status(500).json({ 
+        message: "Failed to create order master record.", 
+        error: err.code === 'ER_BAD_FIELD_ERROR' ? "Database schema mismatch. Please contact admin." : err.message
+      });
     }
 
     const orderId = orderResult.insertId;
@@ -80,32 +83,20 @@ router.post("/orders", verifyToken, (req, res) => {
           return res.status(500).json({ message: "Failed to save order items." });
         }
 
-        // 3. Insert shipping_info
-        const shippingSql = `
-          INSERT INTO shipping_info (order_id, phone, city, address, landmark, note)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `;
-        db.query(shippingSql, [orderId, phone, city, address, landmark, note], (err3) => {
-          if (err3) {
-            console.error("Shipping info insert error:", err3);
-            // Non-fatal — order is still placed
-          }
+        // 3. If COD, insert payment record immediately
+        if (payment_method === "cod") {
+          db.query(
+            "INSERT INTO payments (order_id, payment_method) VALUES (?, 'cash')",
+            [orderId],
+            (err4) => {
+              if (err4) console.error("Payment insert error (COD):", err4);
+            }
+          );
+        }
 
-          // 4. If COD, insert payment record immediately
-          if (payment_method === "cod") {
-            db.query(
-              "INSERT INTO payments (order_id, payment_method) VALUES (?, 'cash')",
-              [orderId],
-              (err4) => {
-                if (err4) console.error("Payment insert error (COD):", err4);
-              }
-            );
-          }
-
-          res.status(201).json({
-            message: "Order placed successfully.",
-            order_id: orderId,
-          });
+        res.status(201).json({
+          message: "Order placed successfully.",
+          order_id: orderId,
         });
       }
     );
@@ -121,11 +112,11 @@ router.get("/orders", verifyToken, (req, res) => {
   const sql = `
     SELECT o.order_id, o.order_date, o.order_status, o.total, o.user_id,
            u.full_name AS user_name,
-           s.city, s.address, s.phone,
+           ua.city, ua.address_details AS address, ua.phone,
            p.payment_method
     FROM orders o
     JOIN users u ON o.user_id = u.user_id
-    LEFT JOIN shipping_info s ON o.order_id = s.order_id
+    LEFT JOIN user_addresses ua ON o.address_id = ua.address_id
     LEFT JOIN payments p ON o.order_id = p.order_id
     ORDER BY o.order_id DESC
   `;
@@ -171,15 +162,18 @@ router.get("/orders/:userId", verifyToken, (req, res) => {
 
   const sql = `
     SELECT o.order_id, o.order_date, o.order_status, o.total,
-           s.city, s.address, s.phone, p.payment_method
+           ua.city, ua.address_details AS address, ua.phone, p.payment_method
     FROM orders o
-    LEFT JOIN shipping_info s ON o.order_id = s.order_id
+    LEFT JOIN user_addresses ua ON o.address_id = ua.address_id
     LEFT JOIN payments p ON o.order_id = p.order_id
     WHERE o.user_id = ?
     ORDER BY o.order_id DESC
   `;
   db.query(sql, [req.params.userId], (err, orders) => {
-    if (err) return res.status(500).json({ message: "Failed to fetch orders." });
+    if (err) {
+      console.error("USER ORDERS FETCH ERROR:", err);
+      return res.status(500).json({ message: "Failed to fetch orders.", details: err.sqlMessage });
+    }
     if (orders.length === 0) return res.json([]);
     const orderIds = orders.map((o) => o.order_id);
     const itemsSql = `
