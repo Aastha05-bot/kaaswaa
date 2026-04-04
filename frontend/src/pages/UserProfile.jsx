@@ -223,7 +223,7 @@ function OrdersTab({ userId, token }) {
           <button className="profile-btn back-btn" onClick={() => setSelectedOrder(null)}>
             &larr; Back to Orders
           </button>
-          {status === "pending" && (
+          {status !== "cancelled" && status !== "delivered" && status !== "shipped" && (
             <button className="profile-btn btn-danger" onClick={() => handleCancelOrder(selectedOrder.order_id)}>
               Cancel Order
             </button>

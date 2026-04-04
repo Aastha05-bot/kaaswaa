@@ -235,7 +235,8 @@ router.put("/orders/user/cancel/:orderId", verifyToken, (req, res) => {
     const order = results[0];
     if (order.user_id !== userId) return res.status(403).json({ message: "Forbidden. Not your order." });
     
-    if (order.order_status.toLowerCase() !== "pending") {
+    const currentStatus = order.order_status.toLowerCase();
+    if (currentStatus === "cancelled" || currentStatus === "delivered" || currentStatus === "shipped") {
       return res.status(400).json({ message: "Cannot cancel order that is already " + order.order_status });
     }
 
