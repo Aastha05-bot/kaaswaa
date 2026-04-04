@@ -45,7 +45,7 @@ const verifyToken = require("../middleware/auth");
 // }
 router.post("/orders", verifyToken, (req, res) => {
   const {
-    user_id, total_amount, phone, city, address,
+    user_id, total_amount, phone, city, address, address_id = null,
     landmark = "", note = "", payment_method, items,
   } = req.body;
 
@@ -58,10 +58,10 @@ router.post("/orders", verifyToken, (req, res) => {
 
   // 1. Insert into orders
   const orderSql = `
-    INSERT INTO orders (user_id, total, order_status)
-    VALUES (?, ?, 'Pending')
+    INSERT INTO orders (user_id, total, order_status, address_id)
+    VALUES (?, ?, 'Pending', ?)
   `;
-  db.query(orderSql, [user_id, total_amount], (err, orderResult) => {
+  db.query(orderSql, [user_id, total_amount, address_id], (err, orderResult) => {
     if (err) {
       console.error("Order insert error:", err);
       return res.status(500).json({ message: "Failed to create order." });

@@ -113,6 +113,21 @@ function OrderConfirm() {
     } catch(err) { console.error(err); }
   };
 
+  const handleSelectAddress = async (addrId) => {
+    setSelectedAddressId(addrId);
+    // Automatically set as default in DB
+    try {
+      await fetch(`http://localhost:5000/api/users/addresses/default/${addrId}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      // Refresh local address list to show the new 'Default' pill
+      fetchAddresses();
+    } catch (err) {
+      console.error("Failed to set default address:", err);
+    }
+  };
+
   const deleteAddress = async (e, addrId) => {
     e.stopPropagation();
     if (!window.confirm("Delete this address?")) return;
@@ -133,19 +148,20 @@ function OrderConfirm() {
     }
 
     if (paymentMethod === "cod") {
-      placeOrder("cod");
+      placeOrder("cod", selectedAddressId);
     } else {
       // Save details for payment page
       sessionStorage.setItem("pending_order", JSON.stringify({
         ...currentAddress,
         address: currentAddress.address_details,
+        address_id: selectedAddressId,
         paymentMethod, total, subtotal, shipping,
       }));
       navigate("/payment");
     }
   };
 
-  const placeOrder = async (method) => {
+  const placeOrder = async (method, addrId) => {
     try {
       setPlacing(true);
       const items = checkoutItems.map(({ product, qty }) => ({
@@ -163,6 +179,7 @@ function OrderConfirm() {
           phone:          currentAddress.phone,
           city:           currentAddress.city,
           address:        currentAddress.address_details,
+          address_id:     addrId,
           landmark:       "",
           note:           "",
           payment_method: method,
@@ -240,11 +257,11 @@ function OrderConfirm() {
                       <div 
                         key={addr.address_id} 
                         className={`addr-card ${isSelected ? 'selected' : ''}`}
-                        onClick={() => setSelectedAddressId(addr.address_id)}
+                        onClick={() => handleSelectAddress(addr.address_id)}
                       >
                         <div className="addr-card-top">
                           <span className="addr-label">{addr.label}</span>
-                          {addr.is_default && <span className="default-pill">Default</span>}
+                          {!!addr.is_default && <span className="default-pill">Default</span>}
                           <div className="radio-circle">
                              {isSelected && <div className="radio-inner" />}
                           </div>

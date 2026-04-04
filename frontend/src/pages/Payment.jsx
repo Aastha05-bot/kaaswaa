@@ -113,6 +113,7 @@ function Payment() {
           phone:          pendingOrder.phone,
           city:           pendingOrder.city,
           address:        pendingOrder.address,
+          address_id:     pendingOrder.address_id || null,
           landmark:       pendingOrder.landmark || "",
           note:           pendingOrder.note     || "",
           payment_method: pendingOrder.paymentMethod,
