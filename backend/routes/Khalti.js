@@ -38,6 +38,14 @@ router.post("/khalti/initiate", verifyToken, async (req, res) => {
       [orderId]
     );
 
+    // 2c. Notify admin and staff
+    const [staffUsers] = await db.promise().query("SELECT user_id FROM users WHERE role IN ('admin', 'staff')");
+    if (staffUsers && staffUsers.length > 0) {
+      const notifMsg = `New order #${orderId} was placed.`;
+      const notifValues = staffUsers.map(u => [u.user_id, notifMsg, false]);
+      await db.promise().query("INSERT INTO notifications (user_id, message, is_read) VALUES ?", [notifValues]);
+    }
+
     // 3. Initiate Khalti payment
     const payload = {
       return_url:           return_url || `${process.env.FRONTEND_URL}/payment-verify`,
@@ -136,6 +144,16 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
         [orderId]
       );
       console.log("Orders table updated ✅");
+      
+      // Send notification to user
+      const [orderRows] = await db.promise().query("SELECT user_id FROM orders WHERE order_id = ?", [orderId]);
+      if (orderRows && orderRows.length > 0) {
+        const uId = orderRows[0].user_id;
+        await db.promise().query(
+          "INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)",
+          [uId, "Your order is being processed"]
+        );
+      }
     } catch (e) {
       console.error("SQL Error (orders update):", e.message);
       throw new Error(`Failed to update orders table: ${e.message}`);

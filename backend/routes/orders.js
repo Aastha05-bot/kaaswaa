@@ -94,6 +94,17 @@ router.post("/orders", verifyToken, (req, res) => {
           );
         }
 
+        // 4. Notify admin and staff
+        db.query("SELECT user_id FROM users WHERE role IN ('admin', 'staff')", (errStaff, staffUsers) => {
+          if (!errStaff && staffUsers.length > 0) {
+            const notifMsg = `New order #${orderId} was placed.`;
+            const notifValues = staffUsers.map(u => [u.user_id, notifMsg, false]);
+            db.query("INSERT INTO notifications (user_id, message, is_read) VALUES ?", [notifValues], (errNotif) => {
+              if (errNotif) console.error("Failed to notify admins/staff:", errNotif);
+            });
+          }
+        });
+
         res.status(201).json({
           message: "Order placed successfully.",
           order_id: orderId,
@@ -214,7 +225,15 @@ router.put("/orders/:orderId", verifyToken, (req, res) => {
     db.query("SELECT user_id FROM orders WHERE order_id = ?", [orderId], (err2, rows) => {
       if (!err2 && rows.length > 0) {
         const userId = rows[0].user_id;
-        const msg = order_status === "Shipped" ? "Your order has been shipped" : `Your order #${orderId} status has been updated to: ${order_status}`;
+        let msg = `Your order #${orderId} status has been updated to: ${order_status}`;
+        const statusLower = order_status.toLowerCase();
+        if (statusLower === "processing") {
+          msg = "Your order is being processed";
+        } else if (statusLower === "shipped") {
+          msg = "Your order has been shipped";
+        } else if (statusLower === "delivered") {
+          msg = "Your order has been delivered successfully";
+        }
         db.query("INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)", [userId, msg]);
       }
     });
