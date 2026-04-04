@@ -19,6 +19,7 @@ import Cart from "./pages/Cart";
 import OrderConfirm from "./pages/OrderConfirm";
 import Payment from "./pages/Payment";
 import EmailTemplate from "./pages/EmailTemplate";
+import PaymentVerify from "./pages/Payment Verify";
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
         <Route path="/order-confirm" element={<OrderConfirm />} />
         <Route path="/payment" element={<Payment />} />
         <Route path="/email-template" element={<EmailTemplate />} />
+        <Route path="/payment-verify" element={<PaymentVerify />} />
         <Route path="/staff-management" element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <StaffManagement />

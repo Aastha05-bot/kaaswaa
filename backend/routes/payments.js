@@ -3,16 +3,6 @@ const router      = express.Router();
 const db          = require("../db");
 const verifyToken = require("../middleware/auth");
 
-/*
-  Your payments table:
-    payment_id     INT(11) PK AI
-    order_id       INT(11) NOT NULL (FK -> orders)
-    payment_method ENUM('cash','card','esewa','khalti') NOT NULL
-    payment_date   TIMESTAMP DEFAULT current_timestamp()
-
-  Optional: add a `status` column for tracking:
-    ALTER TABLE payments ADD COLUMN status ENUM('pending','completed','failed') NOT NULL DEFAULT 'pending';
-*/
 
 // ── POST /api/payments  (protected) ──────────────────────
 // Called after eSewa / Card payment is confirmed on the frontend.

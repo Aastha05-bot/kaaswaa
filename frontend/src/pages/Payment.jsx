@@ -24,10 +24,6 @@ function Payment() {
   const [cvv,        setCvv]        = useState("");
   const [errors,     setErrors]     = useState({});
 
-  // eSewa form state
-  const [esewaPhone, setEsewaPhone] = useState("");
-  const [esewaPin,   setEsewaPin]   = useState("");
-
   // Khalti form state
   const [khaltiPhone, setKhaltiPhone] = useState("");
   const [khaltiPin,   setKhaltiPin]   = useState("");
@@ -42,7 +38,6 @@ function Payment() {
   }, []);
 
   const isCard   = pendingOrder?.paymentMethod === "card";
-  const isEsewa  = pendingOrder?.paymentMethod === "esewa";
   const isKhalti = pendingOrder?.paymentMethod === "khalti";
 
   // ── Validation ─────────────────────────────────────────
@@ -68,15 +63,6 @@ function Payment() {
     return e;
   };
 
-  const validateEsewa = () => {
-    const e = {};
-    if (!esewaPhone.trim() || esewaPhone.length < 10)
-      e.esewaPhone = "Enter your eSewa phone number";
-    if (!esewaPin.trim() || esewaPin.length < 4)
-      e.esewaPin = "Enter your eSewa PIN";
-    return e;
-  };
-
   // ── Format card number with spaces ─────────────────────
   const handleCardNumberChange = (e) => {
     const val = e.target.value.replace(/\D/g, "").slice(0, 16);
@@ -91,7 +77,7 @@ function Payment() {
 
   // ── Submit payment ─────────────────────────────────────
   const handlePay = async () => {
-    const e = isCard ? validateCard() : isEsewa ? validateEsewa() : isKhalti ? validateKhalti() : {};
+    const e = isCard ? validateCard() : isKhalti ? validateKhalti() : {};
     if (Object.keys(e).length) { setErrors(e); return; }
     setErrors({});
     setProcessing(true);
@@ -207,53 +193,11 @@ function Payment() {
               </svg>
             </button>
             <h1 className="pay-title">
-            {isEsewa ? "Pay with eSewa" : isKhalti ? "Pay with Khalti" : "Pay with Card"}
+            {isKhalti ? "Pay with Khalti" : "Pay with Card"}
             </h1>
           </div>
 
           <div className="pay-section">
-            {/* ── eSewa Form ── */}
-            {isEsewa && (
-              <>
-                <div className="pay-esewa-badge">
-  
-                <img src ="https://cdn.esewa.com.np/ui/images/esewa_og.png?111" alt="eSewa" width="65" height="40" />
-
-                  <span>eSewa Digital Wallet</span>
-                </div>
-
-                <div className="pay-field">
-                  <label className="pay-label">eSewa Registered Phone Number <span className="pay-required">*</span></label>
-                  <input
-                    className={`pay-input ${errors.esewaPhone ? "pay-input--error" : ""}`}
-                    value={esewaPhone}
-                    onChange={(e) => setEsewaPhone(e.target.value)}
-                    placeholder="98XXXXXXXX"
-                    type="tel"
-                    maxLength={10}
-                  />
-                  {errors.esewaPhone && <span className="pay-error-msg">{errors.esewaPhone}</span>}
-                </div>
-
-                <div className="pay-field">
-                  <label className="pay-label">eSewa PIN <span className="pay-required">*</span></label>
-                  <input
-                    className={`pay-input ${errors.esewaPin ? "pay-input--error" : ""}`}
-                    value={esewaPin}
-                    onChange={(e) => setEsewaPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    placeholder="••••••"
-                    type="password"
-                    maxLength={6}
-                  />
-                  {errors.esewaPin && <span className="pay-error-msg">{errors.esewaPin}</span>}
-                </div>
-
-                <p className="pay-note">
-                  Make sure your eSewa account has sufficient balance of <strong>Rs. {pendingOrder.total?.toLocaleString()}</strong>.
-                </p>
-              </>
-            )}
-
             {/* ── Khalti Form ── */}
             {isKhalti && (
               <>

@@ -31,6 +31,8 @@ app.use("/api", cartRoutes);
 app.use("/api", orderRoutes);
 app.use("/api", wishlistRoutes);
 app.use("/api", paymentRoutes);
+const khaltiRoutes = require("./routes/Khalti");
+app.use("/api", khaltiRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Kaa Swaa backend is running!" });

@@ -7,8 +7,7 @@ import "../Styles/OrderConfirm.css";
 
 const PAYMENT_METHODS = [
   { id: "cod",    label: "Cash on Delivery", icon: "https://cdn-icons-png.flaticon.com/512/6614/6614969.png" },
-  { id: "esewa",  label: "Pay with eSewa",   icon: "https://cdn.esewa.com.np/ui/images/esewa_og.png?111" },
-  { id: "khalti", label: "Pay with Khalti",  icon: "https://cpng.pikpng.com/pngl/s/292-2923069_khalti-digital-wallet-logo-khalti-clipart.png" },
+  { id: "khalti", label: "Pay with Khalti",  icon: "https://images.seeklogo.com/logo-png/33/1/khalti-logo-png_seeklogo-337962.png" },
 ];
 
 function OrderConfirm() {
@@ -141,25 +140,64 @@ function OrderConfirm() {
   };
 
   // ── Place Order Handlers ────────────────────────────────
-  const handlePlaceOrder = () => {
-    if (!selectedAddressId) {
-      alert("Please select or add a delivery address.");
-      return;
-    }
+  const handlePlaceOrder = async () => {
+  if (!selectedAddressId) {
+    alert("Please select or add a delivery address.");
+    return;
+  }
 
-    if (paymentMethod === "cod") {
-      placeOrder("cod", selectedAddressId);
-    } else {
-      // Save details for payment page
-      sessionStorage.setItem("pending_order", JSON.stringify({
-        ...currentAddress,
-        address: currentAddress.address_details,
-        address_id: selectedAddressId,
-        paymentMethod, total, subtotal, shipping,
+  if (paymentMethod === "cod") {
+    // COD flow stays the same
+    placeOrder("cod", selectedAddressId);
+    return;
+  }
+
+  if (paymentMethod === "khalti") {
+    try {
+      setPlacing(true);
+
+      const items = checkoutItems.map(({ product, qty }) => ({
+        product_id: product.id,
+        quantity:   qty,
+        price:      product.price,
       }));
-      navigate("/payment");
+
+      const res = await fetch("http://localhost:5000/api/khalti/initiate", {
+        method:  "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization:  `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          user_id:      parseInt(userId),
+          total_amount: total,
+          address_id:   selectedAddressId,
+          address:      currentAddress.address_details,
+          phone:        currentAddress.phone,
+          city:         currentAddress.city,
+          return_url:   "http://localhost:5173/payment/verify",
+          items,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to initiate payment.");
+
+      // Save order_id so verify page can reference it
+      sessionStorage.setItem("khalti_order_id", data.order_id);
+      sessionStorage.setItem("checkout_items",   sessionStorage.getItem("checkout_items"));
+
+      // Redirect to real Khalti payment page
+      window.location.href = data.payment_url;
+
+    } catch (err) {
+      console.error(err);
+      alert(`Khalti payment failed: ${err.message}`);
+    } finally {
+      setPlacing(false);
     }
-  };
+  }
+};
 
   const placeOrder = async (method, addrId) => {
     try {
