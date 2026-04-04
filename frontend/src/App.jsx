@@ -41,6 +41,8 @@ function App() {
         <Route path="/payment" element={<Payment />} />
         <Route path="/email-template" element={<EmailTemplate />} />
         <Route path="/payment-verify" element={<PaymentVerify />} />
+        <Route path="/payment-verify" element={<PaymentVerify />} />
+        <Route path="/payment/verify" element={<PaymentVerify />} />
         <Route path="/staff-management" element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <StaffManagement />

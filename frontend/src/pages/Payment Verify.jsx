@@ -16,6 +16,7 @@ function PaymentVerify() {
   useEffect(() => {
     const pidx         = searchParams.get("pidx");
     const khaltiStatus = searchParams.get("status");
+    const purchaseOrderId = searchParams.get("purchase_order_id") || sessionStorage.getItem("khalti_order_id");
 
     // If Khalti says not completed, fail immediately
     if (!pidx || khaltiStatus !== "Completed") {
@@ -30,7 +31,7 @@ function PaymentVerify() {
         "Content-Type": "application/json",
         Authorization:  `Bearer ${token}`,
       },
-      body: JSON.stringify({ pidx }),
+      body: JSON.stringify({ pidx, purchase_order_id: purchaseOrderId }),
     })
       .then(r => r.json())
       .then(data => {

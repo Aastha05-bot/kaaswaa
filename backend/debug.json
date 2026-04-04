@@ -1,0 +1,22 @@
+{
+  "order": [
+    {
+      "order_id": 35,
+      "user_id": 18,
+      "order_date": "2026-04-04T15:43:51.000Z",
+      "order_status": "pending",
+      "total": "1100.00",
+      "address_id": 4
+    }
+  ],
+  "payment": [
+    {
+      "payment_id": 12,
+      "order_id": 35,
+      "payment_method": "khalti",
+      "payment_date": "2026-04-04T15:43:51.000Z",
+      "transaction_id": null,
+      "status": "pending"
+    }
+  ]
+}

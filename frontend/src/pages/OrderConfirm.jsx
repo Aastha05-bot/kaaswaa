@@ -175,7 +175,7 @@ function OrderConfirm() {
           address:      currentAddress.address_details,
           phone:        currentAddress.phone,
           city:         currentAddress.city,
-          return_url:   "http://localhost:5173/payment/verify",
+          return_url:   "http://localhost:5173/payment-verify",
           items,
         }),
       });
