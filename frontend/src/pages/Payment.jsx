@@ -28,6 +28,10 @@ function Payment() {
   const [esewaPhone, setEsewaPhone] = useState("");
   const [esewaPin,   setEsewaPin]   = useState("");
 
+  // Khalti form state
+  const [khaltiPhone, setKhaltiPhone] = useState("");
+  const [khaltiPin,   setKhaltiPin]   = useState("");
+
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login"); return; }
     const order = JSON.parse(sessionStorage.getItem("pending_order") || "null");
@@ -39,6 +43,7 @@ function Payment() {
 
   const isCard   = pendingOrder?.paymentMethod === "card";
   const isEsewa  = pendingOrder?.paymentMethod === "esewa";
+  const isKhalti = pendingOrder?.paymentMethod === "khalti";
 
   // ── Validation ─────────────────────────────────────────
   const validateCard = () => {
@@ -51,6 +56,15 @@ function Payment() {
       e.expiry = "Enter expiry as MM/YY";
     if (!cvv || cvv.length < 3)
       e.cvv = "Enter a valid CVV";
+    return e;
+  };
+
+  const validateKhalti = () => {
+    const e = {};
+    if (!khaltiPhone.trim() || khaltiPhone.length < 10)
+      e.khaltiPhone = "Enter your Khalti phone number";
+    if (!khaltiPin.trim() || khaltiPin.length < 4)
+      e.khaltiPin = "Enter your Khalti MPIN";
     return e;
   };
 
@@ -77,7 +91,7 @@ function Payment() {
 
   // ── Submit payment ─────────────────────────────────────
   const handlePay = async () => {
-    const e = isCard ? validateCard() : isEsewa ? validateEsewa() : {};
+    const e = isCard ? validateCard() : isEsewa ? validateEsewa() : isKhalti ? validateKhalti() : {};
     if (Object.keys(e).length) { setErrors(e); return; }
     setErrors({});
     setProcessing(true);
@@ -120,7 +134,7 @@ function Payment() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body:    JSON.stringify({
           order_id:       newOrderId,
-          payment_method: pendingOrder.paymentMethod === "esewa" ? "esewa" : "card",
+          payment_method: pendingOrder.paymentMethod,
         }),
       });
 
@@ -192,7 +206,7 @@ function Payment() {
               </svg>
             </button>
             <h1 className="pay-title">
-              {isEsewa ? "Pay with eSewa" : "Pay with Card"}
+            {isEsewa ? "Pay with eSewa" : isKhalti ? "Pay with Khalti" : "Pay with Card"}
             </h1>
           </div>
 
@@ -235,6 +249,46 @@ function Payment() {
 
                 <p className="pay-note">
                   Make sure your eSewa account has sufficient balance of <strong>Rs. {pendingOrder.total?.toLocaleString()}</strong>.
+                </p>
+              </>
+            )}
+
+            {/* ── Khalti Form ── */}
+            {isKhalti && (
+              <>
+                <div className="pay-esewa-badge khalti-badge">
+                  <img src="https://khalti.com/static/img/logo1.png" alt="Khalti" width="65" height="40" style={{ objectFit: 'contain' }} />
+                  <span>Khalti Digital Wallet</span>
+                </div>
+
+                <div className="pay-field">
+                  <label className="pay-label">Khalti Registered Phone Number <span className="pay-required">*</span></label>
+                  <input
+                    className={`pay-input ${errors.khaltiPhone ? "pay-input--error" : ""}`}
+                    value={khaltiPhone}
+                    onChange={(e) => setKhaltiPhone(e.target.value)}
+                    placeholder="98XXXXXXXX"
+                    type="tel"
+                    maxLength={10}
+                  />
+                  {errors.khaltiPhone && <span className="pay-error-msg">{errors.khaltiPhone}</span>}
+                </div>
+
+                <div className="pay-field">
+                  <label className="pay-label">Khalti MPIN <span className="pay-required">*</span></label>
+                  <input
+                    className={`pay-input ${errors.khaltiPin ? "pay-input--error" : ""}`}
+                    value={khaltiPin}
+                    onChange={(e) => setKhaltiPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="••••••"
+                    type="password"
+                    maxLength={6}
+                  />
+                  {errors.khaltiPin && <span className="pay-error-msg">{errors.khaltiPin}</span>}
+                </div>
+
+                <p className="pay-note">
+                  Make sure your Khalti account has sufficient balance of <strong>Rs. {pendingOrder.total?.toLocaleString()}</strong>.
                 </p>
               </>
             )}

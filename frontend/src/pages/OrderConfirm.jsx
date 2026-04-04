@@ -1,72 +1,52 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { MapPin, Plus, Trash2, Edit2, Clock, CheckCircle2, ChevronDown } from "lucide-react";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/OrderConfirm.css";
 
-const CITIES = [
-  "Pokhara",
-  "Kathmandu Inside Ring Road",
-  "Kathmandu Outside Ring Road",
-  "Lalitpur",
-  "Bhaktapur",
-  "Biratnagar",
-  "Butwal",
-  "Bharatpur",
-  "Birgunj",
-  "Dharan",
-  "Janakpur",
-  "Nepalgunj",
-  "Hetauda",
-  "Itahari",
-  "Damak",
-];
-
-// ── Fixed, accurate payment method icons ─────────────────
-const EsewaIcon = () => (
-  <img src ="https://cdn.esewa.com.np/ui/images/esewa_og.png?111" alt="eSewa" width="65" height="40" />
-);
-
-const CardIcon = () => (
-  <img src="https://th.bing.com/th/id/R.cf1f4768067a1bea9a70f0ef933ec885?rik=b%2bM2lxpMcHrJJg&riu=http%3a%2f%2fclipart-library.com%2fimages_k%2fcredit-card-transparent-background%2fcredit-card-transparent-background-24.png&ehk=FtE0gCfVo5kqU8h%2b2%2fER0a7XhZrXNgCWfmfnoJdzBNs%3d&risl=&pid=ImgRaw&r=0" alt="Card" width="65" height="40" />
-);
-
-const CodIcon = () => (
-  <img src="https://cdn-icons-png.flaticon.com/512/6614/6614969.png" alt="Cash on Delivery" width="65" height="40" />
-);
-
 const PAYMENT_METHODS = [
-  { id: "esewa", label: "eSewa",              icon: <EsewaIcon /> },
-  { id: "card",  label: "Credit / Debit Card", icon: <CardIcon />  },
-  { id: "cod",   label: "Cash on Delivery",    icon: <CodIcon />   },
+  { id: "cod",    label: "Cash on Delivery", icon: "https://cdn-icons-png.flaticon.com/512/6614/6614969.png" },
+  { id: "esewa",  label: "Pay with eSewa",   icon: "https://cdn.esewa.com.np/ui/images/esewa_og.png?111" },
+  { id: "khalti", label: "Pay with Khalti",  icon: "https://khalti.com/static/img/logo1.png" },
 ];
 
 function OrderConfirm() {
   const navigate   = useNavigate();
   const token      = sessionStorage.getItem("token");
   const username   = sessionStorage.getItem("username");
-  const email      = sessionStorage.getItem("email");
-  const fullName   = sessionStorage.getItem("full_name") || username || "";
   const userId     = sessionStorage.getItem("user_id");
   const isLoggedIn = !!token;
 
+  // Checkout items & totals
   const [checkoutItems, setCheckoutItems] = useState([]);
   const [subtotal,  setSubtotal]  = useState(0);
   const [shipping,  setShipping]  = useState(150);
   const [total,     setTotal]     = useState(0);
 
-  const [phone,         setPhone]         = useState("");
-  const [city,          setCity]          = useState(CITIES[0]);
-  const [address,       setAddress]       = useState("");
-  const [landmark,      setLandmark]      = useState("");
-  const [note,          setNote]          = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("esewa");
-  const [placing,       setPlacing]       = useState(false);
-  const [orderId,       setOrderId]       = useState(null); // track placed order
-  const [errors,        setErrors]        = useState({});
+  // Address State
+  const [addresses, setAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+  const [loadingAddresses, setLoadingAddresses] = useState(true);
+  
+  // Payment Dropdown State
+  const [paymentMethod, setPaymentMethod] = useState("cod");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Modal State (for adding/editing address)
+  const [showModal, setShowModal] = useState(false);
+  const [editingAddr, setEditingAddr] = useState(null);
+  const [formData, setFormData] = useState({
+    label: "", full_name: "", phone: "", city: "", address_details: "", is_default: false
+  });
+
+  const [placing, setPlacing] = useState(false);
+  const [orderId, setOrderId] = useState(null);
 
   useEffect(() => {
     if (!isLoggedIn) { navigate("/login"); return; }
+    
+    // Fetch Items
     const items = JSON.parse(sessionStorage.getItem("checkout_items") || "[]");
     if (!items.length) { navigate("/cart"); return; }
     const sub = parseFloat(sessionStorage.getItem("checkout_subtotal") || 0);
@@ -75,37 +55,99 @@ function OrderConfirm() {
     setSubtotal(sub);
     setShipping(shi);
     setTotal(sub + shi);
-  }, []);
 
-  const validate = () => {
-    const e = {};
-    if (!phone.trim())   e.phone   = "Phone number is required";
-    if (!address.trim()) e.address = "Address is required";
-    return e;
+    // Fetch Addresses
+    fetchAddresses();
+  }, [isLoggedIn, navigate]);
+
+  const fetchAddresses = () => {
+    setLoadingAddresses(true);
+    fetch(`http://localhost:5000/api/users/addresses/${userId}`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        setAddresses(data);
+        setLoadingAddresses(false);
+        // Default selection: the one marked is_default, or the first one
+        const def = data.find(a => a.is_default) || data[0];
+        if (def) setSelectedAddressId(def.address_id);
+      })
+      .catch(() => setLoadingAddresses(false));
   };
 
-  const handleProceed = () => {
-    const e = validate();
-    if (Object.keys(e).length) { setErrors(e); return; }
-    setErrors({});
+  const currentAddress = addresses.find(a => a.address_id === selectedAddressId);
+
+  // ── Address Handlers ───────────────────────────────────
+  const handleOpenModal = (addr = null) => {
+    if (addr) {
+      setEditingAddr(addr);
+      setFormData({
+        label: addr.label, full_name: addr.full_name, phone: addr.phone,
+        city: addr.city, address_details: addr.address_details, is_default: !!addr.is_default
+      });
+    } else {
+      setEditingAddr(null);
+      setFormData({ label: "", full_name: "", phone: "", city: "", address_details: "", is_default: false });
+    }
+    setShowModal(true);
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    const method = editingAddr ? "PUT" : "POST";
+    const url = editingAddr 
+      ? `http://localhost:5000/api/users/addresses/${editingAddr.address_id}`
+      : "http://localhost:5000/api/users/addresses";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify(formData)
+      });
+      if (res.ok) {
+        setShowModal(false);
+        fetchAddresses();
+      }
+    } catch(err) { console.error(err); }
+  };
+
+  const deleteAddress = async (e, addrId) => {
+    e.stopPropagation();
+    if (!window.confirm("Delete this address?")) return;
+    try {
+      await fetch(`http://localhost:5000/api/users/addresses/${addrId}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      fetchAddresses();
+    } catch(err) { console.error(err); }
+  };
+
+  // ── Place Order Handlers ────────────────────────────────
+  const handlePlaceOrder = () => {
+    if (!selectedAddressId) {
+      alert("Please select or add a delivery address.");
+      return;
+    }
 
     if (paymentMethod === "cod") {
       placeOrder("cod");
     } else {
-      // Save shipping details for payment page, then navigate
+      // Save details for payment page
       sessionStorage.setItem("pending_order", JSON.stringify({
-        phone, city, address, landmark, note,
+        ...currentAddress,
+        address: currentAddress.address_details,
         paymentMethod, total, subtotal, shipping,
       }));
       navigate("/payment");
     }
   };
 
-  // ── Place order via backend ────────────────────────────
   const placeOrder = async (method) => {
     try {
       setPlacing(true);
-
       const items = checkoutItems.map(({ product, qty }) => ({
         product_id: product.id,
         quantity:   qty,
@@ -118,57 +160,51 @@ function OrderConfirm() {
         body:    JSON.stringify({
           user_id:        parseInt(userId),
           total_amount:   total,
-          phone, city, address, landmark, note,
+          phone:          currentAddress.phone,
+          city:           currentAddress.city,
+          address:        currentAddress.address_details,
+          landmark:       "",
+          note:           "",
           payment_method: method,
           items,
         }),
       });
 
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to place order.");
-      }
+      if (!res.ok) throw new Error("Failed to place order.");
 
       const data = await res.json();
       setOrderId(data.order_id);
 
-      // Remove bought items from DB cart
+      // Clear Cart
       await fetch(`http://localhost:5000/api/cart/clear/${userId}`, {
         method:  "DELETE",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: { "Authorization": `Bearer ${token}` },
       });
 
-      // Clean up sessionStorage checkout state
       sessionStorage.removeItem("checkout_items");
       sessionStorage.removeItem("checkout_subtotal");
       sessionStorage.removeItem("checkout_shipping");
-      sessionStorage.removeItem("checkout_total");
-      sessionStorage.removeItem("pending_order");
 
     } catch (err) {
-      alert(err.message || "Could not place order. Please try again.");
+      alert(err.message || "Failed to place order.");
     } finally {
       setPlacing(false);
     }
   };
 
-  // ── Success screen ─────────────────────────────────────
   if (orderId) {
     return (
       <div className="oc-page">
         <Header isLoggedIn={isLoggedIn} username={username} />
-        <div className="oc-success">
-          <div className="oc-success-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-              strokeLinecap="round" strokeLinejoin="round" width="32" height="32">
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <h2>Order Placed!</h2>
-          <p>Thank you, <strong>{fullName || username}</strong>! Your order #{orderId} has been received.</p>
-          <div className="oc-success-actions">
-            <button className="oc-btn-primary" onClick={() => navigate("/products")}>Continue Shopping</button>
-            <button className="oc-btn-outline" onClick={() => navigate("/profile")}>View My Orders</button>
+        <div className="oc-success-fullscreen">
+          <div className="oc-success-box">
+             <div className="success-icon-ring"><CheckCircle2 size={48} /></div>
+             <h2>Your order #{orderId} is confirmed!</h2>
+             <p>Thank you for shopping with Kaa Swaa. We'll start crafting your handmade treasures right away.</p>
+             <div className="success-btns">
+               <button onClick={() => navigate("/products")}>Continue Shopping</button>
+               <button className="secondary" onClick={() => navigate("/profile")}>View Orders</button>
+             </div>
           </div>
         </div>
         <Footer />
@@ -180,170 +216,169 @@ function OrderConfirm() {
     <div className="oc-page">
       <Header isLoggedIn={isLoggedIn} username={username} />
 
-      <div className="oc-layout">
-        {/* ── Left: Form ── */}
-        <div className="oc-form-col">
-          <div className="oc-header-row">
-            <button className="oc-back-btn" onClick={() => navigate("/cart")}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
-                strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                <polyline points="15 18 9 12 15 6" />
-              </svg>
-            </button>
-            <h1 className="oc-title">Checkout</h1>
-          </div>
+      <main className="oc-main">
+        <div className="oc-container">
+          <div className="oc-left">
+            <h1 className="oc-heading">Billing Details</h1>
 
-          {/* Section 1: General Information */}
-          <div className="oc-section">
-            <h2 className="oc-section-title">1. General Information</h2>
-            <div className="oc-row-2">
-              <div className="oc-field">
-                <label className="oc-label">Full Name</label>
-                <input className="oc-input oc-input--readonly" value={fullName} readOnly placeholder="Your full name" />
-              </div>
-              <div className="oc-field">
-                <label className="oc-label">Email</label>
-                <input className="oc-input oc-input--readonly" value={email} readOnly placeholder="Your email" />
-              </div>
-            </div>
-            <div className="oc-field">
-              <label className="oc-label">Phone Number <span className="oc-required">*</span></label>
-              <input
-                className={`oc-input ${errors.phone ? "oc-input--error" : ""}`}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="eg: 9862200000"
-                type="tel"
-                maxLength={15}
-              />
-              {errors.phone && <span className="oc-error-msg">{errors.phone}</span>}
-            </div>
-            <div className="oc-field">
-              <label className="oc-label">Order Note <span className="oc-optional">(any message for us)</span></label>
-              <input
-                className="oc-input"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="eg: Please pack it nicely."
-              />
-            </div>
-          </div>
-
-          {/* Section 2: Delivery Address */}
-          <div className="oc-section">
-            <h2 className="oc-section-title">2. Delivery Address</h2>
-            <div className="oc-field">
-              <label className="oc-label">City / District <span className="oc-required">*</span></label>
-              <div className="oc-select-wrap">
-                <select className="oc-select" value={city} onChange={(e) => setCity(e.target.value)}>
-                  {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-                <svg className="oc-select-icon" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 12 15 18 9" />
-                </svg>
-              </div>
-            </div>
-            <div className="oc-row-2">
-              <div className="oc-field">
-                <label className="oc-label">Address <span className="oc-required">*</span></label>
-                <input
-                  className={`oc-input ${errors.address ? "oc-input--error" : ""}`}
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="eg: Pokhara-8, Pirthvi Chowk"
-                />
-                {errors.address && <span className="oc-error-msg">{errors.address}</span>}
-              </div>
-              <div className="oc-field">
-                <label className="oc-label">Landmark <span className="oc-optional">(optional)</span></label>
-                <input
-                  className="oc-input"
-                  value={landmark}
-                  onChange={(e) => setLandmark(e.target.value)}
-                  placeholder="eg: Kunti Mall"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Payment Methods */}
-          <div className="oc-section">
-            <h2 className="oc-section-title">3. Payment Method</h2>
-            <div className="oc-payment-grid">
-              {PAYMENT_METHODS.map((m) => (
-                <button
-                  key={m.id}
-                  className={`oc-payment-card ${paymentMethod === m.id ? "oc-payment-card--active" : ""}`}
-                  onClick={() => setPaymentMethod(m.id)}
-                  type="button"
-                >
-                  <div className="oc-payment-icon">{m.icon}</div>
-                  <span className="oc-payment-label">{m.label}</span>
-                  <div className={`oc-payment-check ${paymentMethod === m.id ? "oc-payment-check--active" : ""}`}>
-                    {paymentMethod === m.id && (
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="12" height="12">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    )}
-                  </div>
+            {/* 1. SELECT ADDRESS */}
+            <section className="oc-section-modern">
+              <div className="section-head">
+                <h2 className="section-title">Select Address</h2>
+                <button className="add-addr-btn" onClick={() => handleOpenModal()}>
+                  <Plus size={16} /> Add Address
                 </button>
-              ))}
-            </div>
-            {(paymentMethod === "esewa" || paymentMethod === "card") && (
-              <p className="oc-payment-note">You'll be redirected to the payment page to complete your purchase.</p>
-            )}
-            {paymentMethod === "cod" && (
-              <p className="oc-payment-note">Pay with cash when your order arrives at your door.</p>
-            )}
-          </div>
-        </div>
+              </div>
 
-        {/* ── Right: Order Summary ── */}
-        <div className="oc-summary-col">
-          <div className="oc-summary">
-            <h2 className="oc-summary-title">Order Summary</h2>
-            <div className="oc-summary-items">
-              {checkoutItems.map(({ product, qty }) => (
-                <div key={product.id} className="oc-summary-item">
-                  <div className="oc-summary-img-wrap">
-                    <img src={product.image} alt={product.name} />
-                    <span className="oc-item-badge">{qty}</span>
-                  </div>
-                  <div className="oc-summary-item-info">
-                    <p className="oc-summary-item-name">{product.name}</p>
-                    <p className="oc-summary-item-price">Rs. {product.price.toLocaleString()} × {qty}</p>
-                  </div>
-                  <p className="oc-summary-item-total">Rs. {(product.price * qty).toLocaleString()}</p>
+              {loadingAddresses ? (
+                <div className="addr-loading">Loading addresses...</div>
+              ) : (
+                <div className="addr-grid">
+                  {addresses.map(addr => {
+                    const isSelected = selectedAddressId === addr.address_id;
+                    return (
+                      <div 
+                        key={addr.address_id} 
+                        className={`addr-card ${isSelected ? 'selected' : ''}`}
+                        onClick={() => setSelectedAddressId(addr.address_id)}
+                      >
+                        <div className="addr-card-top">
+                          <span className="addr-label">{addr.label}</span>
+                          {addr.is_default && <span className="default-pill">Default</span>}
+                          <div className="radio-circle">
+                             {isSelected && <div className="radio-inner" />}
+                          </div>
+                        </div>
+                        <h4 className="addr-name">{addr.full_name}</h4>
+                        <p className="addr-text">{addr.address_details}</p>
+                        <p className="addr-text">{addr.city}</p>
+                        <p className="addr-phone">Alternate No.: {addr.phone}</p>
+                        <div className="addr-card-actions">
+                          <button onClick={(e) => { e.stopPropagation(); handleOpenModal(addr); }}><Edit2 size={14} /> Edit</button>
+                          <button className="del" onClick={(e) => deleteAddress(e, addr.address_id)}><Trash2 size={14} /> Delete</button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
+            </section>
+
+            {/* 2. DELIVERY */}
+            <section className="oc-section-modern">
+               <h2 className="section-title">Delivery</h2>
+               <div className="delivery-card">
+                  <Clock className="delivery-icon" size={24} />
+                  <div>
+                    <h4>Estimated Delivery : 5 - 6 days</h4>
+                    <p>Handmade products might take extra time to craft for you.</p>
+                  </div>
+               </div>
+            </section>
+
+            {/* 3. PAYMENT OPTION */}
+            <section className="oc-section-modern explorer-dropdown-wrap">
+              <h2 className="section-title">Select Payment Option</h2>
+              <div className={`oc-custom-dropdown ${dropdownOpen ? 'open' : ''}`}>
+                 <div className="dropdown-trigger" onClick={() => setDropdownOpen(!dropdownOpen)}>
+                    <img src={PAYMENT_METHODS.find(p => p.id === paymentMethod).icon} alt="" />
+                    <span>{PAYMENT_METHODS.find(p => p.id === paymentMethod).label}</span>
+                    <ChevronDown size={20} className="chevron" />
+                 </div>
+                 {dropdownOpen && (
+                   <div className="dropdown-menu">
+                     {PAYMENT_METHODS.map(m => (
+                       <div 
+                        key={m.id} 
+                        className="dropdown-item" 
+                        onClick={() => { setPaymentMethod(m.id); setDropdownOpen(false); }}
+                       >
+                         <img src={m.icon} alt="" />
+                         {m.label}
+                       </div>
+                     ))}
+                   </div>
+                 )}
+              </div>
+            </section>
+          </div>
+
+          <div className="oc-right">
+            <div className="order-summary-card">
+              <div className="summary-head">
+                <h3>Order Summary</h3>
+                <button className="edit-order-link" onClick={() => navigate("/cart")}>Edit your orders</button>
+              </div>
+
+              <div className="summary-items-list">
+                {checkoutItems.map(item => (
+                  <div key={item.product.id} className="summary-item">
+                    <img src={item.product.image} alt={item.product.name} />
+                    <div className="summary-item-info">
+                       <p className="item-name">{item.product.name}</p>
+                       <p className="item-qty">Qty: {item.qty}</p>
+                    </div>
+                    <span className="item-price">Rs {item.product.price * item.qty}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="summary-divider" />
+
+              <div className="summary-totals">
+                 <div className="total-row"><span>Total</span> <span>Rs {subtotal}</span></div>
+                 <div className="total-row"><span>Discount</span> <span className="discount">- Rs 0</span></div>
+                 <div className="total-row"><span>Delivery Charge</span> <span>Rs {shipping}</span></div>
+                 <p className="tax-hint">(Inclusive of all Taxes)</p>
+              </div>
+
+              <div className="grand-total-row">
+                 <p>Grand Total ({checkoutItems.length} items)</p>
+                 <h3>Rs {total}</h3>
+              </div>
+
+              <button 
+                className="place-order-btn" 
+                onClick={handlePlaceOrder}
+                disabled={placing}
+              >
+                {placing ? "Processing..." : "Place Order"}
+              </button>
+
+              <div className="vee-points-card">
+                 <div className="vee-icon-box">🏆</div>
+                 <div className="vee-text">
+                    <h4>Rewarded Vee Points</h4>
+                    <p>0</p>
+                 </div>
+              </div>
+              <p className="vee-note">*Note: Vee Points rewarded on your purchase will be added 7 days from the date of delivery due to the refund policy.</p>
             </div>
-            <div className="oc-summary-divider" />
-            <div className="oc-summary-rows">
-              <div className="oc-summary-row">
-                <span>Sub-total</span>
-                <span>Rs. {subtotal.toLocaleString()}</span>
-              </div>
-              <div className="oc-summary-row">
-                <span>Delivery Charge</span>
-                <span>Rs. {shipping.toLocaleString()}</span>
-              </div>
-              <div className="oc-summary-row oc-summary-row--total">
-                <span>Total</span>
-                <span>Rs. {total.toLocaleString()}</span>
-              </div>
-            </div>
-            <button className="oc-place-btn" onClick={handleProceed} disabled={placing}>
-              {placing
-                ? "Placing Order..."
-                : paymentMethod === "cod"
-                  ? "Place Order"
-                  : `Pay with ${PAYMENT_METHODS.find((m) => m.id === paymentMethod)?.label}`}
-            </button>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* RETHINK MODAL (Add/Edit Address) */}
+      {showModal && (
+        <div className="oc-modal-overlay">
+          <div className="oc-modal-content">
+            <h3>{editingAddr ? "Edit Address" : "Add New Address"}</h3>
+            <form onSubmit={handleFormSubmit}>
+              <div className="oc-form-grid">
+                <div className="f-group"><label>Label</label><input placeholder="eg. Home" value={formData.label} onChange={e => setFormData({...formData, label: e.target.value})} required /></div>
+                <div className="f-group"><label>Full Name</label><input placeholder="Receiver Name" value={formData.full_name} onChange={e => setFormData({...formData, full_name: e.target.value})} required /></div>
+                <div className="f-group"><label>Phone</label><input placeholder="eg. 9812345678" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} required /></div>
+                <div className="f-group"><label>City</label><input placeholder="eg. Pokhara" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} required /></div>
+                <div className="f-group full"><label>Address Details</label><input placeholder="eg. Street, Ward No." value={formData.address_details} onChange={e => setFormData({...formData, address_details: e.target.value})} required /></div>
+              </div>
+              <div className="oc-modal-footer">
+                <button type="button" className="cancel-btn" onClick={() => setShowModal(false)}>Cancel</button>
+                <button type="submit" className="save-btn">{editingAddr ? "Save Changes" : "Add Address"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

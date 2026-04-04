@@ -13,7 +13,10 @@
 
 /* ── Page ── */
 .pay-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  flex: 1;
   font-family: 'DM Sans', sans-serif;
   background: var(--pink-pale);
   color: var(--dark);
@@ -21,6 +24,7 @@
 
 /* ── Layout ── */
 .pay-layout {
+  flex: 1;
   max-width: 1100px;
   margin: 0 auto;
   padding: 40px 32px 80px;
@@ -85,6 +89,13 @@
   font-size: 14px;
   font-weight: 500;
   color: #2e7d32;
+}
+
+/* ── Khalti badge ── */
+.khalti-badge {
+  background: #f3e5f5;
+  border-color: #5C2D91;
+  color: #4a148c;
 }
 
 /* ── Card Preview ── */

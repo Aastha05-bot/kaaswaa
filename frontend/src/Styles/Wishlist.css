@@ -12,7 +12,10 @@
 
 /* ── Page ── */
 .wl-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  flex: 1;
   font-family: 'DM Sans', sans-serif;
   background: var(--pink-pale);
   color: var(--dark);
@@ -20,9 +23,12 @@
 
 /* ── Content wrapper ── */
 .wl-content {
+  flex: 1;
   max-width: 900px;
   margin: 0 auto;
   padding: 40px 24px 80px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* ── Empty state ── */

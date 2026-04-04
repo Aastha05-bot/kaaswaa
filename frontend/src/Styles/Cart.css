@@ -12,7 +12,10 @@
 
 /* ── Page ── */
 .cart-page {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  flex: 1;
   font-family: 'DM Sans', sans-serif;
   background: var(--pink-pale);
   color: var(--dark);
@@ -20,6 +23,7 @@
 
 /* ── Layout ── */
 .cart-layout {
+  flex: 1;
   max-width: 1200px; margin: 0 auto;
   padding: 48px 80px 80px;
   display: grid;
