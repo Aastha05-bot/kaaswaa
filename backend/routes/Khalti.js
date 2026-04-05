@@ -19,7 +19,7 @@ router.post("/khalti/initiate", verifyToken, async (req, res) => {
   try {
     // 1. Save pending order in DB with status 'pending'
     const [orderResult] = await db.promise().query(
-      "INSERT INTO orders (user_id, total, order_status, address_id) VALUES (?, ?, 'pending', ?)",
+      "INSERT INTO orders (user_id, total, order_status, address_id) VALUES (?, ?, 'Pending', ?)",
       [user_id, total_amount, address_id]
     );
     const orderId = orderResult.insertId;
@@ -131,20 +131,26 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
 
     // 1. Update order status
     try {
-      await db.promise().query(
+      const [updateResult] = await db.promise().query(
         "UPDATE orders SET order_status = 'Confirmed' WHERE order_id = ?",
         [orderId]
       );
-      console.log("Orders table updated ✅");
-
-      // Send notification to user
-      const [orderRows] = await db.promise().query("SELECT user_id FROM orders WHERE order_id = ?", [orderId]);
-      if (orderRows && orderRows.length > 0) {
-        const uId = orderRows[0].user_id;
-        await db.promise().query(
-          "INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)",
-          [uId, `Your payment for order #${orderId} was successful and it has been confirmed.`]
-        );
+      
+      console.log(`Orders table updated (Affected: ${updateResult.affectedRows}) ✅`);
+      
+      if (updateResult.affectedRows === 0) {
+        console.error(`Order ID ${orderId} not found for status update!`);
+        // We will still try to record the payment, but this is a critical issue.
+      } else {
+        // Send notification to user only if update was successful
+        const [orderRows] = await db.promise().query("SELECT user_id FROM orders WHERE order_id = ?", [orderId]);
+        if (orderRows && orderRows.length > 0) {
+          const uId = orderRows[0].user_id;
+          await db.promise().query(
+            "INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)",
+            [uId, `Your payment for order #${orderId} was successful and it has been confirmed.`]
+          );
+        }
       }
     } catch (e) {
       console.error("SQL Error (orders update):", e.message);

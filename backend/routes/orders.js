@@ -57,7 +57,8 @@ router.post("/orders", verifyToken, (req, res) => {
   }
 
   // 1. Insert into orders
-  const initialStatus = (payment_method === "cod") ? "Confirmed" : "pending";
+  const pm = (payment_method || "").toLowerCase();
+  const initialStatus = (pm === "cod" || pm === "cash") ? "Confirmed" : "Pending";
   const orderSql = `
     INSERT INTO orders (user_id, total, order_status, address_id)
     VALUES (?, ?, ?, ?)
@@ -85,12 +86,23 @@ router.post("/orders", verifyToken, (req, res) => {
         }
 
         // 3. If COD, insert payment record immediately
-        if (payment_method === "cod") {
+        const pm = (payment_method || "").toLowerCase();
+        if (pm === "cod" || pm === "cash") {
           db.query(
             "INSERT INTO payments (order_id, payment_method, status) VALUES (?, 'cash', 'completed')",
             [orderId],
             (err4) => {
               if (err4) console.error("Payment insert error (COD):", err4);
+
+              // 4. Send notification for COD order confirmed
+              const notifyMsg = `Your order #${orderId} was placed successfully and has been confirmed (Cash on Delivery).`;
+              db.query(
+                "INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)",
+                [user_id, notifyMsg],
+                (err5) => {
+                  if (err5) console.error("Notification error (COD):", err5);
+                }
+              );
             }
           );
         }

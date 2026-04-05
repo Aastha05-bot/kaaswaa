@@ -165,12 +165,12 @@ function UserProfile() {
 function OrdersTab({ userId, token }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderId, setSelectedOrderId] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchOrders = () => {
-      fetch(`http://localhost:5000/api/orders/${userId}`, {
+      fetch(`http://localhost:5000/api/orders/${userId}?t=${Date.now()}`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
         .then(res => res.ok ? res.json() : [])
@@ -193,7 +193,6 @@ function OrdersTab({ userId, token }) {
       const data = await res.json();
       if (res.ok) {
         setOrders(prev => prev.map(o => o.order_id === orderId ? { ...o, order_status: "Cancelled" } : o));
-        setSelectedOrder(prev => ({ ...prev, order_status: "Cancelled" }));
         alert("Order cancelled successfully.");
       } else {
         alert(data.message || "Failed to cancel order.");
@@ -206,12 +205,14 @@ function OrdersTab({ userId, token }) {
   if (loading) return <p>Loading orders...</p>;
   if (orders.length === 0) return <div className="empty-state"><h3>No orders found</h3><p>You haven't placed any orders yet.</p></div>;
 
+  const selectedOrder = orders.find(o => o.order_id === selectedOrderId);
+
   if (selectedOrder) {
     const isCancelled = (selectedOrder.order_status || "").toLowerCase() === "cancelled";
     const status = (selectedOrder.order_status || "Pending").toLowerCase();
 
     const getStatusStep = (statusStr) => {
-      const s = (statusStr || "Pending").toLowerCase();
+      const s = (statusStr || "Pending").trim().toLowerCase();
       if (s === "pending" || s === "placed") return 0;
       if (s === "confirmed") return 1;
       if (s === "processing" || s === "preparing") return 2;
@@ -235,7 +236,7 @@ function OrdersTab({ userId, token }) {
     return (
       <div className="order-details-view">
         <div className="order-details-header">
-          <button className="profile-btn back-btn" onClick={() => setSelectedOrder(null)}>
+          <button className="profile-btn back-btn" onClick={() => setSelectedOrderId(null)}>
             &larr; Back to Orders
           </button>
           {!isCancelled && ["pending", "confirmed", "placed", "processing", "packed"].includes(status) && (
@@ -338,7 +339,7 @@ function OrdersTab({ userId, token }) {
             <p className="item-date">{new Date(o.order_date).toLocaleDateString()}</p>
             <h4 style={{ marginTop: '10px', color: "#e85a8a" }}>Rs. {parseFloat(o.total || 0).toLocaleString()}</h4>
           </div>
-          <button className="profile-btn" onClick={() => setSelectedOrder(o)}>View Order</button>
+          <button className="profile-btn" onClick={() => setSelectedOrderId(o.order_id)}>View Order</button>
         </div>
       ))}
     </div>

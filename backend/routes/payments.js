@@ -51,9 +51,9 @@ router.post("/payments", verifyToken, (req, res) => {
                 return res.status(500).json({ message: "Failed to record payment." });
               }
 
-              // Update order status to 'processing' after payment
+              // Update order status to 'Confirmed' after payment
               db.query(
-                "UPDATE orders SET order_status = 'processing' WHERE order_id = ?",
+                "UPDATE orders SET order_status = 'Confirmed' WHERE order_id = ?",
                 [order_id],
                 (err4) => {
                   if (err4) console.error("Order status update error:", err4);
