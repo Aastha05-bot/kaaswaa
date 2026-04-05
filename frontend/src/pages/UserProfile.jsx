@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { User, Package, Star, Lock, FileText, LogOut, Trash2, Bell, CheckCircle, Clock, Truck, Home as HomeIcon, MapPin, MoreVertical, Plus, X, Camera } from "lucide-react";
+import { User, Package, Star, Lock, FileText, LogOut, Trash2, Bell, CheckCircle, Clock, Truck, Home as HomeIcon, MapPin, MoreVertical, Plus, X, Camera, ClipboardCheck, Settings } from "lucide-react";
 import Header from "./Header";
 import Footer from "./Footer";
 import "../Styles/UserProfile.css";
@@ -207,15 +207,30 @@ function OrdersTab({ userId, token }) {
   if (orders.length === 0) return <div className="empty-state"><h3>No orders found</h3><p>You haven't placed any orders yet.</p></div>;
 
   if (selectedOrder) {
+    const isCancelled = (selectedOrder.order_status || "").toLowerCase() === "cancelled";
     const status = (selectedOrder.order_status || "Pending").toLowerCase();
+
+    const getStatusStep = (statusStr) => {
+      const s = (statusStr || "Pending").toLowerCase();
+      if (s === "pending" || s === "placed") return 0;
+      if (s === "confirmed") return 1;
+      if (s === "processing" || s === "preparing") return 2;
+      if (s === "packed") return 3;
+      if (s === "shipped") return 4;
+      if (s === "delivered" || s === "completed") return 5;
+      return -1;
+    };
+
+    const currentIdx = getStatusStep(selectedOrder.order_status);
+
     const steps = [
       { id: "pending", label: "Pending", icon: Clock },
-      { id: "processing", label: "Processing", icon: CheckCircle },
+      { id: "confirmed", label: "Confirmed", icon: ClipboardCheck },
+      { id: "processing", label: "Processing", icon: Settings },
+      { id: "packed", label: "Packed", icon: Package },
       { id: "shipped", label: "Shipped", icon: Truck },
-      { id: "delivered", label: "Delivered", icon: HomeIcon },
+      { id: "delivered", label: "Delivered", icon: CheckCircle },
     ];
-
-    const currentIdx = steps.findIndex(s => s.id === status);
 
     return (
       <div className="order-details-view">
@@ -223,7 +238,7 @@ function OrdersTab({ userId, token }) {
           <button className="profile-btn back-btn" onClick={() => setSelectedOrder(null)}>
             &larr; Back to Orders
           </button>
-          {status !== "cancelled" && status !== "delivered" && status !== "shipped" && (
+          {!isCancelled && ["pending", "confirmed", "placed", "processing", "packed"].includes(status) && (
             <button className="profile-btn btn-danger" onClick={() => handleCancelOrder(selectedOrder.order_id)}>
               Cancel Order
             </button>
@@ -232,22 +247,41 @@ function OrdersTab({ userId, token }) {
         
         <h2 className="tab-header">Order #{selectedOrder.order_id} Details</h2>
 
-        {/* Timeline */}
-        <div className="timeline-container">
-          {steps.map((step, idx) => {
-            const isActive = idx === currentIdx;
-            const isCompleted = idx < currentIdx || status === "delivered";
-            const StepIcon = step.icon;
-            return (
-              <div key={step.id} className={`timeline-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
-                <div className="step-dot">
-                  <StepIcon size={16} />
+        {isCancelled ? (
+          <div className="cancelled-box" style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '15px', 
+            background: '#fef2f2', 
+            padding: '20px', 
+            borderRadius: '12px', 
+            border: '1px solid #fee2e2',
+            marginBottom: '30px',
+            color: '#dc2626'
+          }}>
+             <X size={32} />
+             <div>
+               <h3 style={{ margin: 0, fontSize: '18px' }}>Order Cancelled</h3>
+               <p style={{ margin: '5px 0 0', opacity: 0.8 }}>This order was cancelled and is no longer being processed.</p>
+             </div>
+          </div>
+        ) : (
+          <div className="timeline-container" style={{ "--progress": (currentIdx / (steps.length - 1)) * 100 }}>
+            {steps.map((step, idx) => {
+              const isActive = idx === currentIdx;
+              const isCompleted = idx < currentIdx || status === "delivered";
+              const StepIcon = step.icon;
+              return (
+                <div key={step.id} className={`timeline-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}>
+                  <div className="step-dot">
+                    <StepIcon size={16} />
+                  </div>
+                  <div className="step-label">{step.label}</div>
                 </div>
-                <div className="step-label">{step.label}</div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="profile-list-item order-details-card">
           <div className="order-info">

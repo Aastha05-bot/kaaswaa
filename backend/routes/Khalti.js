@@ -132,7 +132,7 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
     // 1. Update order status
     try {
       await db.promise().query(
-        "UPDATE orders SET order_status = 'processing' WHERE order_id = ?",
+        "UPDATE orders SET order_status = 'Confirmed' WHERE order_id = ?",
         [orderId]
       );
       console.log("Orders table updated ✅");
@@ -143,7 +143,7 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
         const uId = orderRows[0].user_id;
         await db.promise().query(
           "INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)",
-          [uId, "Your order is being processed"]
+          [uId, `Your payment for order #${orderId} was successful and it has been confirmed.`]
         );
       }
     } catch (e) {

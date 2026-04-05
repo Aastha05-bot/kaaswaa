@@ -117,7 +117,7 @@ export default function AdminDashboard() {
     .filter(o => ["delivered", "shipped"].includes(o.order_status?.toLowerCase()))
     .reduce((s, o) => s + parseFloat(o.total || 0), 0);
   const totalOrders = orders.length;
-  const pendingOrders = orders.filter(o => o.order_status?.toLowerCase() === "pending").length;
+  const pendingOrders = orders.filter(o => ["pending", "confirmed", "processing", "packed"].includes(o.order_status?.toLowerCase())).length;
   const totalUsers = users.length;
 
   // ── Product CRUD ───────────────────────────────────────

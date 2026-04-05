@@ -57,11 +57,12 @@ router.post("/orders", verifyToken, (req, res) => {
   }
 
   // 1. Insert into orders
+  const initialStatus = (payment_method === "cod") ? "Confirmed" : "pending";
   const orderSql = `
     INSERT INTO orders (user_id, total, order_status, address_id)
-    VALUES (?, ?, 'Pending', ?)
+    VALUES (?, ?, ?, ?)
   `;
-  db.query(orderSql, [user_id, total_amount, address_id], (err, orderResult) => {
+  db.query(orderSql, [user_id, total_amount, initialStatus, address_id], (err, orderResult) => {
     if (err) {
       console.error("Order creation master table failed:", err);
       return res.status(500).json({ 
@@ -86,7 +87,7 @@ router.post("/orders", verifyToken, (req, res) => {
         // 3. If COD, insert payment record immediately
         if (payment_method === "cod") {
           db.query(
-            "INSERT INTO payments (order_id, payment_method) VALUES (?, 'cash')",
+            "INSERT INTO payments (order_id, payment_method, status) VALUES (?, 'cash', 'completed')",
             [orderId],
             (err4) => {
               if (err4) console.error("Payment insert error (COD):", err4);
@@ -263,8 +264,12 @@ router.put("/orders/:orderId", verifyToken, (req, res) => {
         const userId = rows[0].user_id;
         let msg = `Your order #${orderId} status has been updated to: ${order_status}`;
         const statusLower = order_status.toLowerCase();
-        if (statusLower === "processing") {
+        if (statusLower === "confirmed") {
+          msg = `Your order #${orderId} has been confirmed.`;
+        } else if (statusLower === "processing") {
           msg = "Your order is being processed";
+        } else if (statusLower === "packed") {
+          msg = `Your order #${orderId} has been packed and is ready for shipment.`;
         } else if (statusLower === "shipped") {
           msg = "Your order has been shipped";
         } else if (statusLower === "delivered") {
@@ -291,7 +296,8 @@ router.put("/orders/user/cancel/:orderId", verifyToken, (req, res) => {
     if (order.user_id !== userId) return res.status(403).json({ message: "Forbidden. Not your order." });
     
     const currentStatus = order.order_status.toLowerCase();
-    if (currentStatus === "cancelled" || currentStatus === "delivered" || currentStatus === "shipped") {
+    const restrictedStatuses = ["cancelled", "delivered", "shipped", "packed"];
+    if (restrictedStatuses.includes(currentStatus)) {
       return res.status(400).json({ message: "Cannot cancel order that is already " + order.order_status });
     }
 

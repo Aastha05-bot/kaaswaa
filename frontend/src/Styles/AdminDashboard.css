@@ -362,10 +362,13 @@ body {
   font-weight: 500;
 }
 
-.status-delivered { background: #f0fdf4; color: #16a34a; }
-.status-pending   { background: #fffbeb; color: #d97706; }
-.status-shipped   { background: #eff6ff; color: #2563eb; }
-.status-cancelled { background: #fef2f2; color: #dc2626; }
+.status-delivered  { background: #f0fdf4; color: #16a34a; }
+.status-pending    { background: #fffbeb; color: #d97706; }
+.status-confirmed  { background: #f5f3ff; color: #7c3aed; }
+.status-processing { background: #eff6ff; color: #2563eb; }
+.status-packed     { background: #ecfeff; color: #0891b2; }
+.status-shipped    { background: #e0f2fe; color: #0284c7; }
+.status-cancelled  { background: #fef2f2; color: #dc2626; }
 
 .tag-pill {
   display: inline-flex;

@@ -68,7 +68,7 @@ export default function Staff() {
     setTimeout(() => setToast(""), 3000);
   };
 
-  const pendingOrders = orders.filter(o => (o.order_status || "").toLowerCase() === "pending").length;
+  const pendingOrders = orders.filter(o => ["pending", "confirmed", "processing", "packed"].includes((o.order_status || "").toLowerCase())).length;
   const shippedOrders = orders.filter(o => (o.order_status || "").toLowerCase() === "shipped").length;
   const deliveredOrders = orders.filter(o => (o.order_status || "").toLowerCase() === "delivered").length;
 
@@ -234,7 +234,9 @@ export default function Staff() {
                         onChange={(e) => handleOrderStatus(o.order_id, e.target.value)}
                       >
                         <option value="Pending">Pending</option>
+                        <option value="Confirmed">Confirmed</option>
                         <option value="Processing">Processing</option>
+                        <option value="Packed">Packed</option>
                         <option value="Shipped">Shipped</option>
                         <option value="Delivered">Delivered</option>
                         <option value="Cancelled">Cancelled</option>
