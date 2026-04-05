@@ -1,12 +1,12 @@
-const express     = require("express");
-const router      = express.Router();
-const axios       = require("axios");
-const db          = require("../db");
+const express = require("express");
+const router = express.Router();
+const axios = require("axios");
+const db = require("../db");
 const verifyToken = require("../middleware/auth");
 
-const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY; // ✅ read from .env
-const KHALTI_INITIATE   = "https://dev.khalti.com/api/v2/epayment/initiate/";
-const KHALTI_LOOKUP     = "https://dev.khalti.com/api/v2/epayment/lookup/";
+const KHALTI_SECRET_KEY = process.env.KHALTI_SECRET_KEY;
+const KHALTI_INITIATE = "https://dev.khalti.com/api/v2/epayment/initiate/";
+const KHALTI_LOOKUP = "https://dev.khalti.com/api/v2/epayment/lookup/";
 
 // ── POST /api/khalti/initiate ─────────────────────────────
 router.post("/khalti/initiate", verifyToken, async (req, res) => {
@@ -38,25 +38,17 @@ router.post("/khalti/initiate", verifyToken, async (req, res) => {
       [orderId]
     );
 
-    // 2c. Notify admin and staff
-    const [staffUsers] = await db.promise().query("SELECT user_id FROM users WHERE role IN ('admin', 'staff')");
-    if (staffUsers && staffUsers.length > 0) {
-      const notifMsg = `New order #${orderId} was placed.`;
-      const notifValues = staffUsers.map(u => [u.user_id, notifMsg, false]);
-      await db.promise().query("INSERT INTO notifications (user_id, message, is_read) VALUES ?", [notifValues]);
-    }
-
     // 3. Initiate Khalti payment
     const payload = {
-      return_url:           return_url || `${process.env.FRONTEND_URL}/payment-verify`,
-      website_url:          process.env.FRONTEND_URL || "http://localhost:5173",
-      amount:               Math.round(total_amount * 100), // paisa
-      purchase_order_id:    `ORDER-${orderId}`,
-      purchase_order_name:  "Kaa Swaa Order",
+      return_url: return_url || `${process.env.FRONTEND_URL}/payment-verify`,
+      website_url: process.env.FRONTEND_URL || "http://localhost:5173",
+      amount: Math.round(total_amount * 100), // paisa
+      purchase_order_id: `ORDER-${orderId}`,
+      purchase_order_name: "Kaa Swaa Order",
       customer_info: {
-        name:  req.user.username || "Customer",
-        email: req.user.email    || "customer@example.com",
-        phone: phone             || "9800000000",
+        name: req.user.username || "Customer",
+        email: req.user.email || "customer@example.com",
+        phone: phone || "9800000000",
       },
     };
 
@@ -65,7 +57,7 @@ router.post("/khalti/initiate", verifyToken, async (req, res) => {
 
     const khaltiRes = await axios.post(KHALTI_INITIATE, payload, {
       headers: {
-        Authorization:  `Key ${KHALTI_SECRET_KEY}`,  // ✅ Capital 'Key'
+        Authorization: `Key ${KHALTI_SECRET_KEY}`,  // ✅ Capital 'Key'
         "Content-Type": "application/json",
       },
     });
@@ -77,8 +69,8 @@ router.post("/khalti/initiate", verifyToken, async (req, res) => {
 
     res.json({
       payment_url: khaltiRes.data.payment_url,
-      pidx:        khaltiRes.data.pidx,
-      order_id:    orderId,
+      pidx: khaltiRes.data.pidx,
+      order_id: orderId,
     });
 
   } catch (err) {
@@ -88,8 +80,8 @@ router.post("/khalti/initiate", verifyToken, async (req, res) => {
     console.error("Stack:", err.stack);
     res.status(500).json({
       message: "Failed to initiate Khalti payment.",
-      error:   err.message,
-      detail:  err?.response?.data || null,
+      error: err.message,
+      detail: err?.response?.data || null,
     });
   }
 });
@@ -105,7 +97,7 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
       { pidx },
       {
         headers: {
-          Authorization:  `Key ${KHALTI_SECRET_KEY}`, // ✅ Capital 'Key'
+          Authorization: `Key ${KHALTI_SECRET_KEY}`, // ✅ Capital 'Key'
           "Content-Type": "application/json",
         },
       }
@@ -144,7 +136,7 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
         [orderId]
       );
       console.log("Orders table updated ✅");
-      
+
       // Send notification to user
       const [orderRows] = await db.promise().query("SELECT user_id FROM orders WHERE order_id = ?", [orderId]);
       if (orderRows && orderRows.length > 0) {
@@ -178,7 +170,7 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
       const [orderRows] = await db.promise().query(
         "SELECT user_id FROM orders WHERE order_id = ?", [orderId]
       );
-      
+
       if (orderRows && orderRows.length > 0) {
         const uId = orderRows[0].user_id;
         // Simpler delete
@@ -194,10 +186,10 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
     }
 
     res.json({
-      success:        true,
-      order_id:       orderId,
+      success: true,
+      order_id: orderId,
       transaction_id,
-      amount:         total_amount / 100,
+      amount: total_amount / 100,
     });
 
   } catch (err) {
@@ -205,11 +197,11 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
     console.error("Message:", err.message);
     const detail = err?.response?.data || null;
     if (detail) console.error("Khalti Response:", detail);
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       message: "Failed to verify or record Khalti payment.",
-      error:   err.message,
-      detail:  detail
+      error: err.message,
+      detail: detail
     });
   }
 });

@@ -94,17 +94,6 @@ router.post("/orders", verifyToken, (req, res) => {
           );
         }
 
-        // 4. Notify admin and staff
-        db.query("SELECT user_id FROM users WHERE role IN ('admin', 'staff')", (errStaff, staffUsers) => {
-          if (!errStaff && staffUsers.length > 0) {
-            const notifMsg = `New order #${orderId} was placed.`;
-            const notifValues = staffUsers.map(u => [u.user_id, notifMsg, false]);
-            db.query("INSERT INTO notifications (user_id, message, is_read) VALUES ?", [notifValues], (errNotif) => {
-              if (errNotif) console.error("Failed to notify admins/staff:", errNotif);
-            });
-          }
-        });
-
         res.status(201).json({
           message: "Order placed successfully.",
           order_id: orderId,
@@ -163,6 +152,53 @@ router.get("/orders/detail/:orderId", verifyToken, (req, res) => {
       }
     );
   });
+});
+
+// ── GET /api/orders/admin/sales-report (admin only) ───────
+router.get("/admin/sales-report", verifyToken, async (req, res) => {
+  if (req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
+
+  try {
+    // 1. Basic Stats (Shipped or Delivered only)
+    const [statsResult] = await db.promise().query(`
+      SELECT 
+        COUNT(order_id) as total_orders,
+        SUM(total) as total_revenue
+      FROM orders 
+      WHERE order_status IN ('Delivered', 'Shipped')
+    `);
+
+    // 2. Top products
+    const [topProducts] = await db.promise().query(`
+      SELECT p.product_name, SUM(oi.quantity) as total_sold, SUM(oi.price * oi.quantity) as total_revenue
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.order_id
+      JOIN product p ON oi.product_id = p.product_id
+      WHERE o.order_status IN ('Delivered', 'Shipped')
+      GROUP BY p.product_id
+      ORDER BY total_sold DESC
+      LIMIT 10
+    `);
+
+    // 3. Sales by day
+    const [salesByDate] = await db.promise().query(`
+      SELECT DATE(order_date) as date, SUM(total) as revenue, COUNT(order_id) as orders
+      FROM orders
+      WHERE order_status IN ('Delivered', 'Shipped')
+      GROUP BY DATE(order_date)
+      ORDER BY DATE(order_date) DESC
+      LIMIT 30
+    `);
+
+    res.json({
+      stats: statsResult[0],
+      topProducts,
+      salesByDate
+    });
+  } catch (err) {
+    console.error("SALES REPORT ERROR:", err);
+    res.status(500).json({ message: "Database Error", details: err.message });
+  }
 });
 
 // ── GET /api/orders/:userId (protected) ─────────────────

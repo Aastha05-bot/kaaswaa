@@ -1,6 +1,42 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// Configure Multer for product pictures
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = "uploads/products/";
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, `product_${Date.now()}${path.extname(file.originalname)}`);
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const types = /jpeg|jpg|png|webp/;
+    const ext = types.test(path.extname(file.originalname).toLowerCase());
+    if (ext) return cb(null, true);
+    cb(new Error("Only images (jpeg, jpg, png, webp) are allowed"));
+  },
+});
+
+// POST upload product image
+router.post("/products/upload-image", upload.single("product_image"), (req, res) => {
+  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+  
+  // Return the path that the frontend can use
+  // We use the full URL if we want, or just the relative path
+  const imageUrl = `http://localhost:5000/uploads/products/${req.file.filename}`;
+  res.json({ message: "Image uploaded successfully", image_url: imageUrl });
+});
 
 // GET all products with category name
 router.get("/products", (req, res) => {

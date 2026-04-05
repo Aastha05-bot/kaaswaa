@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, ShoppingBag, Package, Users, LogOut,
   Plus, Pencil, Trash2, Search, X, DollarSign, Clock,
-  TrendingUp, ChevronDown, UserCog, Eye,
+  TrendingUp, ChevronDown, UserCog, Eye, FileText,
 } from "lucide-react";
 import "../Styles/AdminDashboard.css";
 
@@ -19,6 +19,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [staffList, setStaffList] = useState([]);
+  const [salesData, setSalesData] = useState({ stats: {}, topProducts: [], salesByDate: [] });
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
@@ -43,6 +44,7 @@ export default function AdminDashboard() {
     fetchUsers();
     fetchStaff();
     fetchCategories();
+    fetchSalesReport();
 
     const interval = setInterval(fetchOrders, 5000); // 5s polling
     return () => clearInterval(interval);
@@ -98,6 +100,13 @@ export default function AdminDashboard() {
       .catch(() => setStaffList([]));
   };
 
+  const fetchSalesReport = () => {
+    fetch(`${BASE}/admin/sales-report`, { headers: authHeader })
+      .then(r => r.json())
+      .then(data => setSalesData(data))
+      .catch(() => console.error("Sales report error"));
+  };
+
   const showToast = (msg) => {
     setToast(msg);
     setTimeout(() => setToast(""), 3000);
@@ -105,7 +114,7 @@ export default function AdminDashboard() {
 
   // ── Stats ──────────────────────────────────────────────
   const totalRevenue = orders
-    .filter(o => o.order_status?.toLowerCase() === "delivered")
+    .filter(o => ["delivered", "shipped"].includes(o.order_status?.toLowerCase()))
     .reduce((s, o) => s + parseFloat(o.total || 0), 0);
   const totalOrders = orders.length;
   const pendingOrders = orders.filter(o => o.order_status?.toLowerCase() === "pending").length;
@@ -157,6 +166,31 @@ export default function AdminDashboard() {
       const res = await fetch(`${BASE}/products/${id}`, { method: "DELETE" });
       if (res.ok) { showToast("Product deleted"); fetchProducts(); }
     } catch { showToast("Failed to delete"); }
+  };
+
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("product_image", file);
+
+    try {
+      showToast("Uploading image...");
+      const res = await fetch(`${BASE}/products/upload-image`, {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setForm({ ...form, image_url: data.image_url });
+        showToast("Image uploaded successfully");
+      } else {
+        showToast(data.message || "Failed to upload image");
+      }
+    } catch {
+      showToast("Error uploading image");
+    }
   };
 
   // ── Order status ───────────────────────────────────────
@@ -223,6 +257,30 @@ export default function AdminDashboard() {
 
   const handleLogout = () => { sessionStorage.clear(); navigate("/login"); };
 
+  const downloadCSV = () => {
+    if (!salesData.salesByDate || salesData.salesByDate.length === 0) return;
+    
+    const headers = ["Date", "Revenue (Rs.)", "Orders Count"];
+    const rows = salesData.salesByDate.map(d => [
+      new Date(d.date).toLocaleDateString(),
+      d.revenue,
+      d.orders
+    ]);
+
+    let csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `sales_report_${new Date().toLocaleDateString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("CSV Downloaded");
+  };
+
   // ── Filtered lists ─────────────────────────────────────
   const filteredProducts = products.filter(p =>
     p.product_name?.toLowerCase().includes(search.toLowerCase())
@@ -240,6 +298,14 @@ export default function AdminDashboard() {
     s.staff_name?.toLowerCase().includes(search.toLowerCase()) ||
     s.email?.toLowerCase().includes(search.toLowerCase())
   );
+  
+  const filteredTopProducts = (salesData.topProducts || []).filter(p =>
+    p.product_name?.toLowerCase().includes(search.toLowerCase())
+  );
+  
+  const filteredSalesByDate = (salesData.salesByDate || []).filter(d =>
+    new Date(d.date).toLocaleDateString().includes(search)
+  );
 
   const navItems = [
     { key: "overview", label: "Overview", Icon: LayoutDashboard },
@@ -247,11 +313,13 @@ export default function AdminDashboard() {
     { key: "orders", label: "Orders", Icon: Package },
     { key: "users", label: "Users", Icon: Users },
     { key: "staff", label: "Staff", Icon: UserCog },
+    { key: "sales", label: "Sales Report", Icon: FileText },
   ];
 
   const pageTitles = {
     overview: "Overview", products: "Products",
     orders: "Orders", users: "Users", staff: "Staff",
+    sales: "Sales Report",
   };
 
   return (
@@ -311,6 +379,11 @@ export default function AdminDashboard() {
             {activeTab === "staff" && (
               <button className="btn-add" onClick={() => setShowStaffModal(true)}>
                 <Plus size={15} strokeWidth={2} /> Add Staff
+              </button>
+            )}
+            {activeTab === "sales" && (
+              <button className="btn-save" onClick={downloadCSV}>
+                Download CSV
               </button>
             )}
           </div>
@@ -496,6 +569,66 @@ export default function AdminDashboard() {
             </table>
           </div>
         )}
+
+        {/* ── SALES REPORT ── */}
+        {activeTab === "sales" && (
+          <div className="overview-content">
+            <div className="stats-grid">
+              <div className="stat-card stat-revenue">
+                <div className="stat-icon-wrap"><DollarSign size={18} /></div>
+                <div>
+                  <p className="stat-label">Total Revenue (Shipped/Delivered)</p>
+                  <p className="stat-value">Rs. {parseFloat(salesData.stats?.total_revenue || 0).toLocaleString()}</p>
+                </div>
+              </div>
+              <div className="stat-card stat-orders">
+                <div className="stat-icon-wrap"><TrendingUp size={18} /></div>
+                <div>
+                  <p className="stat-label">Total Successful Orders</p>
+                  <p className="stat-value">{salesData.stats?.total_orders || 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="recent-section" style={{ marginTop: "30px" }}>
+              <h3 className="section-title">Top Selling Products</h3>
+              <table className="admin-table">
+                <thead>
+                  <tr><th>Product Name</th><th>Qty Sold</th><th>Total Revenue</th></tr>
+                </thead>
+                <tbody>
+                  {filteredTopProducts.map((p, idx) => (
+                    <tr key={idx}>
+                      <td className="td-name">{p.product_name}</td>
+                      <td>{p.total_sold}</td>
+                      <td>Rs. {parseFloat(p.total_revenue).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {filteredTopProducts.length === 0 && <tr><td colSpan={3} className="loading-text">No matching products</td></tr>}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="recent-section" style={{ marginTop: "30px" }}>
+              <h3 className="section-title">Daily Sales Trend (Last 30 Days)</h3>
+              <table className="admin-table">
+                <thead>
+                  <tr><th>Date</th><th>Revenue</th><th>Orders</th></tr>
+                </thead>
+                <tbody>
+                  {filteredSalesByDate.map((d, idx) => (
+                    <tr key={idx}>
+                      <td className="td-muted">{new Date(d.date).toLocaleDateString()}</td>
+                      <td>Rs. {parseFloat(d.revenue).toLocaleString()}</td>
+                      <td>{d.orders}</td>
+                    </tr>
+                  ))}
+                  {filteredSalesByDate.length === 0 && <tr><td colSpan={3} className="loading-text">No matching logs</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* ── PRODUCT MODAL ── */}
@@ -548,11 +681,12 @@ export default function AdminDashboard() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Image URL</label>
-                  <input value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} placeholder="/image.jpg" />
+                  <label>Product Image</label>
+                  <input type="file" accept="image/*" onChange={handleImageUpload} className="photo-input" style={{ marginBottom: "8px" }} />
+                  <input value={form.image_url} onChange={e => setForm({ ...form, image_url: e.target.value })} placeholder="Or enter image URL here..." />
                 </div>
               </div>
-              {form.image_url && <div className="image-preview"><img src={form.image_url} alt="preview" /></div>}
+              {form.image_url && <div className="image-preview" style={{ marginTop: "15px", display: "flex", justifyContent: "center" }}><img src={form.image_url} alt="preview" style={{ maxHeight: "150px", borderRadius: "8px" }} /></div>}
             </div>
             <div className="modal-footer">
               <button className="btn-cancel" onClick={() => setShowModal(false)}>Cancel</button>
