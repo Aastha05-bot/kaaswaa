@@ -171,7 +171,8 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
       throw new Error(`Failed to update payments table: ${e.message}`);
     }
 
-    // 3. Clear cart
+    // 3. Clear cart (REMOVED as per user request to keep products in cart)
+    /*
     try {
       const [orderRows] = await db.promise().query(
         "SELECT user_id FROM orders WHERE order_id = ?", [orderId]
@@ -190,6 +191,7 @@ router.post("/khalti/verify", verifyToken, async (req, res) => {
       console.error("SQL Error (cart clear):", e.message);
       // Don't fail the whole payment if only cart clearing fails, but log it
     }
+    */
 
     res.json({
       success: true,

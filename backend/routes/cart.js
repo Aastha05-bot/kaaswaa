@@ -17,6 +17,8 @@ router.get("/cart/:userId", verifyToken, (req, res) => {
       ci.cart_item_id,
       ci.product_id,
       ci.quantity,
+      ci.customization,
+      ci.custom_price,
       p.product_name,
       p.price,
       p.image_url,
@@ -51,16 +53,24 @@ const getOrCreateCart = (user_id) => {
 
 // ── POST /api/cart/add  (protected) ──────────────────────────
 router.post("/cart/add", verifyToken, async (req, res) => {
-  const { user_id, product_id, quantity = 1 } = req.body;
+  const { user_id, product_id, quantity = 1, customization = null, custom_price = null } = req.body;
 
   if (!user_id || !product_id) return res.status(400).json({ message: "user_id and product_id are required." });
   if (parseInt(user_id) !== req.user.id) return res.status(403).json({ message: "Forbidden." });
 
+  const custStr = customization ? JSON.stringify(customization) : null;
+
   try {
     const cartId = await getOrCreateCart(user_id);
 
-    // Check if product is already in cart
-    db.query("SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ?", [cartId, product_id], (err, rows) => {
+    // Check if product with SAME customization is already in cart
+    const checkSql = customization 
+      ? "SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ? AND customization = ?"
+      : "SELECT * FROM cart_items WHERE cart_id = ? AND product_id = ? AND customization IS NULL";
+    
+    const checkParams = customization ? [cartId, product_id, custStr] : [cartId, product_id];
+
+    db.query(checkSql, checkParams, (err, rows) => {
       if (err) return res.status(500).json({ message: "DB Error." });
 
       if (rows.length > 0) {
@@ -72,10 +82,17 @@ router.post("/cart/add", verifyToken, async (req, res) => {
         });
       } else {
         // Insert new item
-        db.query("INSERT INTO cart_items (cart_id, product_id, quantity) VALUES (?, ?, ?)", [cartId, product_id, quantity], (err2) => {
-          if (err2) return res.status(500).json({ message: "Failed to add to cart." });
-          res.status(201).json({ message: "Added to cart." });
-        });
+        db.query(
+          "INSERT INTO cart_items (cart_id, product_id, quantity, customization, custom_price) VALUES (?, ?, ?, ?, ?)", 
+          [cartId, product_id, quantity, custStr, custom_price], 
+          (err2) => {
+            if (err2) {
+              console.error(err2);
+              return res.status(500).json({ message: "Failed to add to cart." });
+            }
+            res.status(201).json({ message: "Added to cart." });
+          }
+        );
       }
     });
   } catch (error) {
@@ -83,21 +100,20 @@ router.post("/cart/add", verifyToken, async (req, res) => {
   }
 });
 
-// ── PUT /api/cart/update  (protected) ──────────────────────────
+// ── PUT /api/cart/update (using cart_item_id) ──────────────────
 router.put("/cart/update", verifyToken, async (req, res) => {
-  const { user_id, product_id, quantity } = req.body;
-  if (!user_id || !product_id || quantity === undefined) return res.status(400).json({ message: "Missing fields" });
+  const { user_id, cart_item_id, quantity } = req.body;
+  if (!user_id || !cart_item_id || quantity === undefined) return res.status(400).json({ message: "Missing fields" });
   if (parseInt(user_id) !== req.user.id) return res.status(403).json({ message: "Forbidden." });
 
   try {
-    const cartId = await getOrCreateCart(user_id);
     if (quantity <= 0) {
-      db.query("DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?", [cartId, product_id], (err) => {
+      db.query("DELETE FROM cart_items WHERE cart_item_id = ?", [cart_item_id], (err) => {
         if (err) return res.status(500).json({ message: "Failed to delete item" });
         return res.json({ message: "Item removed" });
       });
     } else {
-      db.query("UPDATE cart_items SET quantity = ? WHERE cart_id = ? AND product_id = ?", [quantity, cartId, product_id], (err) => {
+      db.query("UPDATE cart_items SET quantity = ? WHERE cart_item_id = ?", [quantity, cart_item_id], (err) => {
         if (err) return res.status(500).json({ message: "Failed to update quantity" });
         return res.json({ message: "Quantity updated", quantity });
       });
@@ -107,13 +123,12 @@ router.put("/cart/update", verifyToken, async (req, res) => {
   }
 });
 
-// ── DELETE /api/cart/remove/:userId/:productId  (protected) ────────────────
-router.delete("/cart/remove/:userId/:productId", verifyToken, async (req, res) => {
+// ── DELETE /api/cart/remove/:userId/:cartItemId (protected) ─────
+router.delete("/cart/remove/:userId/:cartItemId", verifyToken, async (req, res) => {
   if (parseInt(req.params.userId) !== req.user.id) return res.status(403).json({ message: "Forbidden." });
 
   try {
-    const cartId = await getOrCreateCart(req.params.userId);
-    db.query("DELETE FROM cart_items WHERE cart_id = ? AND product_id = ?", [cartId, req.params.productId], (err) => {
+    db.query("DELETE FROM cart_items WHERE cart_item_id = ?", [req.params.cartItemId], (err) => {
       if (err) return res.status(500).json({ message: "Failed to remove item." });
       res.json({ message: "Item removed." });
     });

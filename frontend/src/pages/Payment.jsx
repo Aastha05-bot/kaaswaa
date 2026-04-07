@@ -127,16 +127,8 @@ function Payment() {
 
       if (!payRes.ok) throw new Error("Payment recording failed.");
 
-      // 3. Clear cart items from DB
-      const productIds = checkoutItems.map((i) => i.product.id);
-      await fetch(`http://localhost:5000/api/cart/${userId}/clear`, {
-        method:  "DELETE",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body:    JSON.stringify({ product_ids: productIds }),
-      });
-
-      // 4. Clean sessionStorage
-      sessionStorage.removeItem("checkout_items");
+      // Cart is no longer cleared here as per user request to keep products in cart.
+      // sessionStorage.removeItem("checkout_items");
       sessionStorage.removeItem("checkout_subtotal");
       sessionStorage.removeItem("checkout_shipping");
       sessionStorage.removeItem("checkout_total");

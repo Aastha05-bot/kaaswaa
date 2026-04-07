@@ -156,10 +156,11 @@ function OrderConfirm() {
     try {
       setPlacing(true);
 
-      const items = checkoutItems.map(({ product, qty }) => ({
+      const items = checkoutItems.map(({ product, qty, customization }) => ({
         product_id: product.id,
         quantity:   qty,
         price:      product.price,
+        customization: customization
       }));
 
       const res = await fetch("http://localhost:5000/api/khalti/initiate", {
@@ -202,10 +203,11 @@ function OrderConfirm() {
   const placeOrder = async (method, addrId) => {
     try {
       setPlacing(true);
-      const items = checkoutItems.map(({ product, qty }) => ({
+      const items = checkoutItems.map(({ product, qty, customization }) => ({
         product_id: product.id,
         quantity:   qty,
         price:      product.price,
+        customization: customization
       }));
 
       const res = await fetch("http://localhost:5000/api/orders", {
@@ -234,13 +236,8 @@ function OrderConfirm() {
       const data = await res.json();
       setOrderId(data.order_id);
 
-      // Clear Cart
-      await fetch(`http://localhost:5000/api/cart/clear/${userId}`, {
-        method:  "DELETE",
-        headers: { "Authorization": `Bearer ${token}` },
-      });
-
-      sessionStorage.removeItem("checkout_items");
+      // Cart is no longer cleared here as per user request to keep products in cart.
+      // sessionStorage.removeItem("checkout_items"); // Temporarily commented out or removed
       sessionStorage.removeItem("checkout_subtotal");
       sessionStorage.removeItem("checkout_shipping");
 

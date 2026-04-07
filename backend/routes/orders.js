@@ -75,9 +75,15 @@ router.post("/orders", verifyToken, (req, res) => {
     const orderId = orderResult.insertId;
 
     // 2. Insert order_items
-    const itemValues = items.map((i) => [orderId, i.product_id, i.quantity, i.price]);
+    const itemValues = items.map((i) => [
+      orderId, 
+      i.product_id, 
+      i.quantity, 
+      i.price, 
+      i.customization ? JSON.stringify(i.customization) : null
+    ]);
     db.query(
-      "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ?",
+      "INSERT INTO order_items (order_id, product_id, quantity, price, customization) VALUES ?",
       [itemValues],
       (err2) => {
         if (err2) {
@@ -153,7 +159,7 @@ router.get("/orders/detail/:orderId", verifyToken, (req, res) => {
       return res.status(403).json({ message: "Forbidden." });
     }
     db.query(
-      `SELECT oi.order_id, oi.product_id, oi.quantity, oi.price,
+      `SELECT oi.order_id, oi.product_id, oi.quantity, oi.price, oi.customization,
               p.product_name, p.image_url
        FROM order_items oi
        JOIN product p ON oi.product_id = p.product_id
@@ -237,7 +243,7 @@ router.get("/orders/:userId", verifyToken, (req, res) => {
     if (orders.length === 0) return res.json([]);
     const orderIds = orders.map((o) => o.order_id);
     const itemsSql = `
-      SELECT oi.order_id, oi.product_id, oi.quantity, oi.price,
+      SELECT oi.order_id, oi.product_id, oi.quantity, oi.price, oi.customization,
              p.product_name, p.image_url
       FROM order_items oi
       JOIN product p ON oi.product_id = p.product_id

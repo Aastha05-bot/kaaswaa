@@ -20,6 +20,7 @@ import OrderConfirm from "./pages/OrderConfirm";
 import Payment from "./pages/Payment";
 import EmailTemplate from "./pages/EmailTemplate";
 import PaymentVerify from "./pages/Payment Verify";
+import Customizer from "./pages/Customizer";
 
 function App() {
   return (
@@ -57,6 +58,11 @@ function App() {
         <Route path="/cart" element={
           <ProtectedRoute allowedRoles={["user"]}>
             <Cart />
+          </ProtectedRoute>
+        }/>
+        <Route path="/customize/:id" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <Customizer />
           </ProtectedRoute>
         }/>
 

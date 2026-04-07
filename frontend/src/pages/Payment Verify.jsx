@@ -39,16 +39,15 @@ function PaymentVerify() {
           setOrderId(data.order_id);
           setTxnId(data.transaction_id);
 
-          // Clear cart from sessionStorage
-          sessionStorage.removeItem("checkout_items");
+          // Cart is no longer cleared here as per user request to keep products in cart.
+          // sessionStorage.removeItem("checkout_items"); 
           sessionStorage.removeItem("checkout_subtotal");
           sessionStorage.removeItem("checkout_shipping");
           sessionStorage.removeItem("checkout_total");
           sessionStorage.removeItem("khalti_order_id");
           sessionStorage.removeItem("pending_order");
 
-          // Clear localStorage cart
-          localStorage.removeItem("cart");
+          // localStorage.removeItem("cart"); // Preserve local cart if any
 
           setStatus("success");
         } else {

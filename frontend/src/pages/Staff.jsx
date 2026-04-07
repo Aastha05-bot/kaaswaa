@@ -374,6 +374,27 @@ export default function Staff() {
                       <div style={{ flex: 1 }}>
                         <p style={{ margin: "0 0 5px", fontWeight: "600", color: "#333" }}>{item.product_name}</p>
                         <p style={{ margin: 0, fontSize: "14px", color: "#666" }}>Qty: {item.quantity}</p>
+                        
+                        {/* Customization Details for Staff */}
+                        {item.customization && (() => {
+                          let cust;
+                          try {
+                            cust = typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization;
+                          } catch (e) {
+                            return null;
+                          }
+                          return (
+                            <div style={{ marginTop: "10px", fontSize: "12px", color: "#555", padding: "10px", background: "#fdf2f8", borderRadius: "8px", border: "1px solid #fce4ec" }}>
+                              <p style={{ margin: "0 0 6px", fontWeight: "700", color: "#e85a8a", textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.5px" }}>Customer Customization</p>
+                              {cust.wrapping && <p style={{ margin: "2px 0" }}><strong>Wrapping:</strong> {cust.wrapping} {cust.wrappingColor ? `(${cust.wrappingColor})` : ""}</p>}
+                              {cust.giftMessage && <p style={{ margin: "2px 0" }}><strong>Message:</strong> "{cust.giftMessage}"</p>}
+                              {cust.selectedFlowers && cust.selectedFlowers.length > 0 && (
+                                <p style={{ margin: "2px 0" }}><strong>Add-ons:</strong> {cust.selectedFlowers.map(f => `${f.name} x${f.qty}`).join(", ")}</p>
+                              )}
+                              {cust.size && <p style={{ margin: "2px 0" }}><strong>Size:</strong> {cust.size}</p>}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div style={{ fontWeight: "600", color: "#e85a8a" }}>
                         Rs. {parseFloat(item.price * item.quantity).toLocaleString()}

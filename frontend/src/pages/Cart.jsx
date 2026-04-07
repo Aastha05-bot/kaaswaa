@@ -20,16 +20,16 @@ function Cart() {
 
   const toggleSelect    = (id) => setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   const toggleSelectAll = () => {
-    const allSelected = cart.every((i) => selected[i.product_id]);
+    const allSelected = cart.every((i) => selected[i.cart_item_id]);
     const next = {};
-    cart.forEach((i) => { next[i.product_id] = !allSelected; });
+    cart.forEach((i) => { next[i.cart_item_id] = !allSelected; });
     setSelected(next);
   };
 
-  const selectedItems = cart.filter((i) => selected[i.product_id]);
-  const allSelected   = cart.length > 0 && cart.every((i) => selected[i.product_id]);
+  const selectedItems = cart.filter((i) => selected[i.cart_item_id]);
+  const allSelected   = cart.length > 0 && cart.every((i) => selected[i.cart_item_id]);
 
-  const subtotal = selectedItems.reduce((s, item) => s + (item.price * item.quantity), 0);
+  const subtotal = selectedItems.reduce((s, item) => s + ((item.custom_price || item.price) * item.quantity), 0);
   const shipping  = subtotal > 0 ? 150 : 0;
   const total     = subtotal + shipping;
 
@@ -49,11 +49,12 @@ function Cart() {
       product: {
         id: si.product_id,
         name: si.product_name,
-        price: si.price,
+        price: si.custom_price || si.price,
         image: si.image_url,
         category: si.category_name
       },
-      qty: si.quantity
+      qty: si.quantity,
+      customization: si.customization ? (typeof si.customization === 'string' ? JSON.parse(si.customization) : si.customization) : null
     }));
 
     sessionStorage.setItem("checkout_items",    JSON.stringify(mappedForCheckout));
@@ -102,10 +103,14 @@ function Cart() {
               </label>
             </div>
 
-            {cart.map((item, i) => (
+            {cart.map((item, i) => {
+              const cust = item.customization ? (typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization) : null;
+              const unitPrice = item.custom_price || item.price;
+              
+              return (
               <div
-                className={`cart-item ${selected[item.product_id] ? "cart-item--selected" : ""}`}
-                key={item.cart_item_id || item.product_id}
+                className={`cart-item ${selected[item.cart_item_id] ? "cart-item--selected" : ""}`}
+                key={item.cart_item_id}
                 style={{ animationDelay: `${i * 0.07}s` }}
               >
                 <div className="cart-item-img" onClick={() => navigate(`/product/${item.product_id}`)}>
@@ -115,22 +120,34 @@ function Cart() {
                 <div className="cart-item-body">
                   <p className="cart-item-cat">{item.category_name || "General"}</p>
                   <h3 onClick={() => navigate(`/product/${item.product_id}`)}>{item.product_name}</h3>
-                  <p className="cart-item-unit-price">Rs. {Number(item.price).toLocaleString()} each</p>
+                  <p className="cart-item-unit-price">Rs. {Number(unitPrice).toLocaleString()} each</p>
+
+                  {/* Rendering Customization Details */}
+                  {cust && (
+                    <div className="cart-item-custom-box">
+                      {cust.wrapping && <p><span>Wrapping:</span> {cust.wrapping} {cust.wrappingColor ? `(${cust.wrappingColor})` : ""}</p>}
+                      {cust.giftMessage && <p><span>Message:</span> "{cust.giftMessage}"</p>}
+                      {cust.selectedFlowers && cust.selectedFlowers.length > 0 && (
+                        <p><span>Bouquet Add-ons:</span> {cust.selectedFlowers.map(f => `${f.name} x${f.qty}`).join(", ")}</p>
+                      )}
+                      {cust.size && <p><span>Size:</span> {cust.size}</p>}
+                    </div>
+                  )}
 
                   <div className="cart-item-row">
                     <div className="cart-qty-wrap">
-                      <button className="cart-qty-btn" onClick={() => updateCartQuantity(item.product_id, item.quantity - 1)}>−</button>
+                      <button className="cart-qty-btn" onClick={() => updateCartQuantity(item.cart_item_id, item.quantity - 1)}>−</button>
                       <span className="cart-qty-val">{item.quantity}</span>
-                      <button className="cart-qty-btn" onClick={() => updateCartQuantity(item.product_id, item.quantity + 1)}>+</button>
+                      <button className="cart-qty-btn" onClick={() => updateCartQuantity(item.cart_item_id, item.quantity + 1)}>+</button>
                     </div>
-                    <p className="cart-item-total">Rs. {(item.price * item.quantity).toLocaleString()}</p>
+                    <p className="cart-item-total">Rs. {(unitPrice * item.quantity).toLocaleString()}</p>
                   </div>
 
                   <div className="cart-item-actions">
-                    <button className="cart-action-link" onClick={() => moveToWishlist(item.product_id)}>
+                    <button className="cart-action-link" onClick={() => moveToWishlist(item.cart_item_id)}>
                       Save for later
                     </button>
-                    <button className="cart-action-link danger" onClick={() => removeFromCart(item.product_id)}>
+                    <button className="cart-action-link danger" onClick={() => removeFromCart(item.cart_item_id)}>
                       Remove
                     </button>
                   </div>
@@ -140,12 +157,12 @@ function Cart() {
                   <input
                     type="checkbox"
                     className="cart-checkbox"
-                    checked={!!selected[item.product_id]}
-                    onChange={() => toggleSelect(item.product_id)}
+                    checked={!!selected[item.cart_item_id]}
+                    onChange={() => toggleSelect(item.cart_item_id)}
                   />
                 </div>
               </div>
-            ))}
+            )})}
           </div>
 
           {/* ---- Summary column ---- */}

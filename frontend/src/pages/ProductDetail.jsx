@@ -9,25 +9,25 @@ import "../Styles/ProductDetail.css";
 const BASE = "http://localhost:5000/api";
 
 function ProductDetail() {
-  const { id }     = useParams();
-  const navigate   = useNavigate();
-  const token      = sessionStorage.getItem("token");
-  const username   = sessionStorage.getItem("username");
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const token = sessionStorage.getItem("token");
+  const username = sessionStorage.getItem("username");
   const isLoggedIn = !!token;
   const authHeader = { Authorization: `Bearer ${token}` };
 
   const { wishlist, addToCart, toggleWishlist } = useContext(ShopContext);
 
-  const [product,          setProduct]          = useState(null);
-  const [reviews,          setReviews]          = useState([]);
-  const [recommendations,  setRecommendations]  = useState([]);
-  const [loading,          setLoading]          = useState(true);
-  const [addedCart,        setAddedCart]        = useState(false);
-  const [rating,           setRating]           = useState(0);
-  const [hoverRating,      setHoverRating]      = useState(0);
-  const [comment,          setComment]          = useState("");
-  const [reviewMsg,        setReviewMsg]        = useState("");
-  const [submitting,       setSubmitting]       = useState(false);
+  const [product, setProduct] = useState(null);
+  const [reviews, setReviews] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [addedCart, setAddedCart] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [reviewMsg, setReviewMsg] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   // Track per-review like/dislike counts (client-side only until backend supports it)
   const [reviewVotes, setReviewVotes] = useState({});
 
@@ -40,7 +40,7 @@ function ProductDetail() {
   const fetchProduct = async () => {
     try {
       setLoading(true);
-      const res  = await fetch(`${BASE}/products/${id}`);
+      const res = await fetch(`${BASE}/products/${id}`);
       if (!res.ok) throw new Error("Not found");
       const data = await res.json();
       setProduct(data);
@@ -53,7 +53,7 @@ function ProductDetail() {
 
   const fetchReviews = async () => {
     try {
-      const res  = await fetch(`${BASE}/feedback/${id}`);
+      const res = await fetch(`${BASE}/feedback/${id}`);
       const data = await res.json();
       setReviews(Array.isArray(data) ? data : []);
     } catch { /* silent */ }
@@ -61,7 +61,7 @@ function ProductDetail() {
 
   const fetchRecommendations = async () => {
     try {
-      const res  = await fetch(`${BASE}/recommendations/${id}`);
+      const res = await fetch(`${BASE}/recommendations/${id}`);
       const data = await res.json();
       setRecommendations(Array.isArray(data) ? data : []);
     } catch { /* silent */ }
@@ -86,13 +86,13 @@ function ProductDetail() {
 
     setSubmitting(true);
     try {
-      const res  = await fetch(`${BASE}/feedback`, {
+      const res = await fetch(`${BASE}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...authHeader },
         body: JSON.stringify({
           product_id: product.product_id,
           comment,
-          ratings:    rating,
+          ratings: rating,
         }),
       });
       const data = await res.json();
@@ -115,7 +115,7 @@ function ProductDetail() {
       return {
         ...prev,
         [reviewId]: {
-          likes:    type === "like"    ? current.likes + 1    : current.likes,
+          likes: type === "like" ? current.likes + 1 : current.likes,
           dislikes: type === "dislike" ? current.dislikes + 1 : current.dislikes,
           voted: type,
         },
@@ -188,6 +188,12 @@ function ProductDetail() {
                 {addedCart ? "✓ Added to Cart!" : "Add to Cart"}
               </button>
               <button
+                className="pd-customize-btn"
+                onClick={() => navigate(`/customize/${product.product_id}`)}
+              >
+                Customize
+              </button>
+              <button
                 className={`pd-wish-btn ${inWishlist ? "active" : ""}`}
                 onClick={handleWishlist}
               >
@@ -203,7 +209,7 @@ function ProductDetail() {
 
           {/* Summary bar */}
           {reviews.length > 0 && (() => {
-            const counts = {5:0,4:0,3:0,2:0,1:0};
+            const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
             reviews.forEach(r => counts[r.ratings]++);
             return (
               <div className="pd-rating-summary">
@@ -213,7 +219,7 @@ function ProductDetail() {
                   <span className="pd-score-count">{reviews.length} Rating{reviews.length !== 1 ? "s" : ""}</span>
                 </div>
                 <div className="pd-bars">
-                  {[5,4,3,2,1].map(n => {
+                  {[5, 4, 3, 2, 1].map(n => {
                     const pct = Math.round((counts[n] / reviews.length) * 100);
                     return (
                       <div key={n} className="pd-bar-row">
@@ -236,7 +242,7 @@ function ProductDetail() {
             <h3>Leave a Review</h3>
             <form onSubmit={handleReviewSubmit}>
               <div className="pd-stars">
-                {[1,2,3,4,5].map(star => (
+                {[1, 2, 3, 4, 5].map(star => (
                   <span
                     key={star}
                     className={`pd-star ${star <= (hoverRating || rating) ? "filled" : ""}`}
@@ -266,7 +272,7 @@ function ProductDetail() {
               <p className="pd-no-reviews">No reviews yet. Be the first!</p>
             ) : (
               reviews.map(r => {
-                const initials = r.full_name.split(" ").map(w => w[0]).join("").slice(0,2).toUpperCase();
+                const initials = r.full_name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
                 const votes = reviewVotes[r.feedback_id] || { likes: 0, dislikes: 0, voted: null };
                 return (
                   <div key={r.feedback_id} className="pd-review-card">

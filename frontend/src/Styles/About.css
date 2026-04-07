@@ -9,201 +9,325 @@
   --gray: #777;
   --white: #ffffff;
 }
-/* Premium About Us Styling */
-.about-page {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  flex: 1;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  color: #333;
-  background-color: #fdfdfd;
+.ks-section {
+  padding: 4rem 0;
 }
-
-.about-hero h1 {
-  font-size: 48px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  margin: 0 0 10px;
-  position: relative;
-  z-index: 1;
+ 
+.ks-section + .ks-section {
+  border-top: 1px solid var(--pink-soft);
 }
-
-.about-hero p {
-  font-size: 20px;
-  font-weight: 300;
-  letter-spacing: 1.5px;
-  margin: 0;
-  color: #ffe6f0;
-  position: relative;
-  z-index: 1;
+ 
+.ks-section--tinted {
+  background: var(--pink-pale);
 }
-
-/* Main Container */
-.about-container {
-  flex: 1;
-  max-width: 1200px;
-  margin: 60px auto;
-  padding: 0 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 80px;
+ 
+.ks-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
 }
-
-/* Our Story Section */
-.about-story {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 50px;
-}
-
-.about-story-content {
-  flex: 1;
-  padding-right: 20px;
-}
-
-.about-story-content h2 {
-  font-size: 36px;
+ 
+.ks-label {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
   color: var(--pink);
-  margin-bottom: 25px;
-  position: relative;
+  margin: 0 0 0.4rem;
 }
-
-.about-story-content h2::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  bottom: -10px;
-  width: 60px;
-  height: 3px;
-  background-color:var(--pink);
-  border-radius: 2px;
-}
-
-.about-story-content p {
-  font-size: 17px;
-  line-height: 1.8;
-  color: #555;
-  margin-bottom: 20px;
-}
-
-.about-story-image {
-  flex: 1;
-  position: relative;
-}
-
-.about-story-image img {
-  width: 100%;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-  transition: transform 0.3s ease;
-}
-
-.about-story-image img:hover {
-  transform: translateY(-5px);
-}
-
-.about-story-image::before {
-  content: "";
-  position: absolute;
-  top: -20px;
-  left: -20px;
-  right: 20px;
-  bottom: 20px;
-  border: 2px dashed var(--pink-light);
-  border-radius: 16px;
-  z-index: -1;
-}
-
-/* Mission & Values Grid */
-.about-grid {
+ 
+/* ─── STORY ─────────────────────────────────────────── */
+ 
+.ks-story {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 40px;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: start;
 }
-
-.about-card {
-  background: #ffffff;
-  padding: 40px;
+ 
+.ks-story-text h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 38px;
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  margin: 0 0 1.5rem;
+  color: var(--dark);
+}
+ 
+.ks-story-text h2 em {
+  font-style: italic;
+  color: var(--pink-light);
+}
+ 
+.ks-story-text p {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--gray);
+  margin: 0 0 1rem;
+}
+ 
+.ks-story-text p strong {
+  color: var(--dark);
+  font-weight: 500;
+}
+ 
+.ks-story-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+ 
+.ks-img-frame {
   border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.04);
-  border: 1px solid #f2f2f2;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  text-align: center;
+  overflow: hidden;
+  border: 1px solid var(--pink-soft);
+  background: var(--pink-pale);
+  aspect-ratio: 4 / 5;
 }
-
-.about-card:hover {
-  box-shadow: 0 15px 35px rgba(255, 51, 119, 0.1);
-  transform: translateY(-10px);
-  border-color: #ffebf0;
+ 
+.ks-img-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
-
-.about-card-icon {
-  width: 60px;
-  height: 60px;
-  background-color: #fff0f5;
-  color: var(--pink);
+ 
+.ks-pullquote {
+  border-left: 2.5px solid var(--pink-light);
+  padding-left: 1rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 19px;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--pink-light);
+  line-height: 1.55;
+  margin: 0;
+}
+ 
+/* ─── MISSION ───────────────────────────────────────── */
+ 
+.ks-mission-wrap {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 3rem;
+  align-items: center;
+}
+ 
+.ks-mission-accent {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(44px, 6vw, 64px);
+  font-weight: 300;
+  line-height: 1.05;
+  color: var(--pink-soft);
+  margin: 0;
+  letter-spacing: -0.03em;
+  -webkit-text-stroke: 1.5px var(--pink-light);
+}
+ 
+.ks-mission-text h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 30px;
+  font-weight: 300;
+  margin: 0 0 0.75rem;
+  color: var(--dark);
+}
+ 
+.ks-mission-text p {
+  font-size: 15px;
+  line-height: 1.85;
+  color: var(--gray);
+  margin: 0;
+}
+ 
+.ks-why-list {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+ 
+.ks-why-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--gray);
+  line-height: 1.5;
+}
+ 
+.ks-why-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
+  background: var(--pink);
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+ 
+/* ─── VALUES ────────────────────────────────────────── */
+ 
+.ks-section-header {
+  margin-bottom: 2.5rem;
+}
+ 
+.ks-section-header h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 36px;
+  font-weight: 300;
+  margin: 0.3rem 0 0;
+  color: var(--dark);
+}
+ 
+.ks-section-sub {
+  font-size: 14px;
+  color: var(--gray);
+  margin: 0.5rem 0 0;
+  line-height: 1.7;
+}
+ 
+.ks-values-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+ 
+.ks-value-card {
+  padding: 1.75rem 1.25rem;
+  border-radius: 16px;
+  border: 1px solid var(--pink-soft);
+  background: var(--pink-pale);
+}
+ 
+.ks-value-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--pink-soft);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 25px;
+  margin-bottom: 1rem;
 }
-
-.about-card h3 {
-  font-size: 24px;
-  color: #1a1a1a;
-  margin-bottom: 20px;
+ 
+.ks-value-card h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 400;
+  margin: 0 0 0.5rem;
+  color: var(--dark);
 }
-
-.about-card p {
-  font-size: 16px;
-  color: #666;
-  line-height: 1.6;
-}
-
-/* Values List */
-.about-values-list {
-  list-style: none;
-  padding: 0;
+ 
+.ks-value-card p {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--gray);
   margin: 0;
-  text-align: left;
 }
-
-.about-values-list li {
+ 
+/* ─── TEAM ──────────────────────────────────────────── */
+ 
+.ks-sisters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+ 
+.ks-sister-card {
+  padding: 1.5rem 1.25rem;
+  border-radius: 16px;
+  background: var(--white);
+  border: 1px solid var(--pink-soft);
+  display: flex;
+  flex-direction: column;
+}
+ 
+.ks-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--pink-soft);
+  border: 2px solid var(--pink-light);
   display: flex;
   align-items: center;
-  gap: 15px;
-  font-size: 16px;
-  color: #555;
-  margin-bottom: 15px;
-}
-
-.about-values-list li svg {
+  justify-content: center;
+  margin: 0 0 1rem;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 20px;
+  font-weight: 400;
   color: var(--pink);
-  flex-shrink: 0;
 }
-
-/* Responsive */
-@media (max-width: 768px) {
-  .about-story {
-    flex-direction: column;
+ 
+.ks-sister-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 19px;
+  font-weight: 400;
+  margin: 0 0 0.15rem;
+  color: var(--dark);
+}
+ 
+.ks-sister-role {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pink);
+  margin: 0 0 0.85rem;
+}
+ 
+.ks-sister-desc {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--gray);
+  margin: 0 0 1rem;
+}
+ 
+.ks-study-pill {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--pink-soft);
+  border: 1px solid var(--pink-light);
+  border-radius: 10px;
+  padding: 9px 11px;
+  margin-top: auto;
+}
+ 
+.ks-study-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+ 
+.ks-study-degree {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--pink);
+  line-height: 1.4;
+  display: block;
+}
+ 
+.ks-study-college {
+  font-size: 11px;
+  color: var(--gray);
+  line-height: 1.4;
+  display: block;
+  margin-top: 2px;
+}
+ 
+/* ─── RESPONSIVE ────────────────────────────────────── */
+ 
+@media (max-width: 720px) {
+  .ks-story,
+  .ks-mission-wrap,
+  .ks-values-grid,
+  .ks-sisters {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
-  
-  .about-story-content {
-    padding-right: 0;
-  }
-  
-  .about-story-image::before {
-    display: none;
-  }
-
-  .about-hero {
-    padding: 60px 20px;
-  }
-
-  .about-hero h1 {
-    font-size: 36px;
+ 
+  .ks-mission-accent {
+    font-size: 48px;
   }
 }

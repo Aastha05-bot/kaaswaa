@@ -82,10 +82,9 @@ export const ShopProvider = ({ children }) => {
   }, [token]);
 
   // Actions
-  const addToCart = async (productId, quantity = 1) => {
+  const addToCart = async (productId, quantity = 1, customization = null, customPrice = null) => {
     if (!currentUserId) return;
     
-    // Optimistic UI update could go here, or we wait for API
     try {
       const res = await fetch("http://localhost:5000/api/cart/add", {
         method: "POST",
@@ -93,7 +92,13 @@ export const ShopProvider = ({ children }) => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ user_id: currentUserId, product_id: productId, quantity })
+        body: JSON.stringify({ 
+          user_id: currentUserId, 
+          product_id: productId, 
+          quantity,
+          customization,
+          custom_price: customPrice
+        })
       });
       if (res.ok) {
         await fetchCart();
@@ -103,7 +108,7 @@ export const ShopProvider = ({ children }) => {
     }
   };
 
-  const updateCartQuantity = async (productId, quantity) => {
+  const updateCartQuantity = async (cartItemId, quantity) => {
     if (!currentUserId) return;
     try {
       const res = await fetch("http://localhost:5000/api/cart/update", {
@@ -112,7 +117,7 @@ export const ShopProvider = ({ children }) => {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ user_id: currentUserId, product_id: productId, quantity })
+        body: JSON.stringify({ user_id: currentUserId, cart_item_id: cartItemId, quantity })
       });
       if (res.ok) {
         await fetchCart();
@@ -122,10 +127,10 @@ export const ShopProvider = ({ children }) => {
     }
   };
 
-  const removeFromCart = async (productId) => {
+  const removeFromCart = async (cartItemId) => {
     if (!currentUserId) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/cart/remove/${currentUserId}/${productId}`, {
+      const res = await fetch(`http://localhost:5000/api/cart/remove/${currentUserId}/${cartItemId}`, {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` }
       });
