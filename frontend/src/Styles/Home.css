@@ -236,7 +236,7 @@ body {
 
 .products-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 16px;
 }
 
@@ -264,7 +264,7 @@ body {
 .product-img {
   position: relative;
   width: 100%;
-  height: 260px;
+  height: 420px;
   overflow: hidden;
   background: var(--pink-soft);
   flex-shrink: 0;
@@ -359,7 +359,7 @@ body {
   background: var(--pink-pale);
   border: 1.5px solid var(--pink);
   color: var(--pink);
-  padding: 8px;
+  padding: 8px 12px;
   border-radius: 25px;
   font-size: 14px;
   font-weight: 500;
@@ -367,10 +367,33 @@ body {
   transition: all 0.2s;
   font-family: 'DM Sans', sans-serif;
   margin-top: auto;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .add-cart-btn:hover  { background: var(--pink); color: white; }
 .add-cart-btn.added  { background: #6aaa7e; border-color: #6aaa7e; color: white; }
+
+.out-of-stock-label {
+  display: block;
+  width: 100%;
+  background: #f8f8f8;
+  color: #aaa;
+  padding: 6px 0;
+  border-radius: 25px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  border: 1px solid #eee;
+  margin-top: auto;
+  cursor: not-allowed;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* ────────────────────────────────────────
    FLOATING INSTAGRAM BUTTON

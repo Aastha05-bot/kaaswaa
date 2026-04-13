@@ -39,9 +39,10 @@ function Home() {
           tag:      p.tag || "",
           image:    p.image_url || "/placeholder.jpg",
           category: p.category_name || "",
+          stock:    p.stock || 0,
         }));
-        const bestsellers = mapped.filter((p) => p.tag === "Bestseller").slice(0, 5);
-        setProducts(bestsellers.length > 0 ? bestsellers : mapped.slice(0, 5));
+        const bestsellers = mapped.filter((p) => p.tag === "Bestseller").slice(0, 4);
+        setProducts(bestsellers.length > 0 ? bestsellers : mapped.slice(0, 4));
       })
       .catch((err) => console.error("Failed to fetch products:", err));
   }, []);
@@ -114,7 +115,7 @@ function Home() {
         <div className="section-header">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
             <h2 style={{ margin: 0 }}>Best Selling</h2>
-            <Link to="/products" className="btn-view-all"> View all </Link>
+            <Link to="/products?tag=Bestseller" className="btn-view-all"> View all </Link>
           </div>
         </div>
         <div className="products-grid">
@@ -142,9 +143,13 @@ function Home() {
                 <div className="product-info">
                   <h3 onClick={() => navigate(`/product/${p.id}`)}>{p.name}</h3>
                   <p className="product-price">Rs. {p.price.toLocaleString()}</p>
-                  <button className="add-cart-btn" onClick={() => handleAddToCart(p.id)}>
-                    Add to Cart
-                  </button>
+                  {p.stock <= 0 ? (
+                    <span className="out-of-stock-label">Out of Stock</span>
+                  ) : (
+                    <button className="add-cart-btn" onClick={() => handleAddToCart(p.id)}>
+                      Add to Cart
+                    </button>
+                  )}
                 </div>
               </div>
             ))

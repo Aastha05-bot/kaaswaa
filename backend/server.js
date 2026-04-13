@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require('fs');
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
@@ -36,6 +37,18 @@ app.use("/api", khaltiRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Kaa Swaa backend is running!" });
+});
+
+// GLOBAL ERROR HANDLER
+app.use((err, req, res, next) => {
+  console.error("GLOBAL ERROR HAUGHT:", err.stack);
+  const logMsg = `[${new Date().toISOString()}] ${err.stack}\n`;
+  try {
+    fs.appendFileSync(path.join(__dirname, 'global_error.log'), logMsg);
+  } catch (e) {
+    console.error("Failed to write to global_error.log:", e);
+  }
+  res.status(500).json({ message: "Internal Server Error", error: err.message, stack: err.stack });
 });
 
 app.listen(process.env.PORT, () => {

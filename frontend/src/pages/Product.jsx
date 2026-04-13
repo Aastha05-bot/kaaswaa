@@ -14,7 +14,9 @@ const sortOptions = [
   { label: "Sort: Name A → Z",        value: "name_asc"   },
 ];
 
-const ITEMS_PER_PAGE = 10;
+const tags = ["All", "New", "Bestseller"];
+
+const ITEMS_PER_PAGE = 20;
 
 function Products() {
   const navigate = useNavigate();
@@ -25,6 +27,7 @@ function Products() {
   const isLoggedIn = !!token;
 
   const search = new URLSearchParams(location.search).get("search") || "";
+  const tag    = new URLSearchParams(location.search).get("tag") || "";
 
   const [allProducts,    setAllProducts]    = useState([]);
   const [loading,        setLoading]        = useState(true);
@@ -33,6 +36,7 @@ function Products() {
   const { wishlist, addToCart, toggleWishlist } = useContext(ShopContext);
 
   const [activeCategory, setActiveCategory] = useState("All");
+  const [activeTag,      setActiveTag]      = useState(tag || "All");
   const [sortBy,         setSortBy]         = useState("default");
   const [addedId,        setAddedId]        = useState(null);
   const [currentPage,    setCurrentPage]    = useState(1);
@@ -53,6 +57,7 @@ function Products() {
           tag:         p.tag || "",
           image:       p.image_url || "/placeholder.jpg",
           description: p.description || "",
+          stock:       p.stock || 0,
         }));
         setAllProducts(mapped);
       } catch {
@@ -64,10 +69,12 @@ function Products() {
     fetchProducts();
   }, []);
 
-  // Reset page when search query changes
+  // Reset page when search/tag query changes from URL
   useEffect(() => {
     setCurrentPage(1);
-  }, [search]);
+    if (tag) setActiveTag(tag);
+    else setActiveTag("All");
+  }, [search, tag]);
 
   const requireAuth = (action) => {
     if (!isLoggedIn) { navigate("/login"); return; }
@@ -84,13 +91,14 @@ function Products() {
     });
 
   const handleCategoryChange = (cat) => { setActiveCategory(cat); setCurrentPage(1); };
+  const handleTagChange      = (t) =>   { setActiveTag(t);       setCurrentPage(1); };
   const handleSortChange     = (val) => { setSortBy(val);         setCurrentPage(1); };
 
-  // Filter + sort
   let filtered = allProducts.filter((p) => {
     const matchCat    = activeCategory === "All" || p.category === activeCategory;
+    const matchTag    = activeTag      === "All" || p.tag.toLowerCase().includes(activeTag.toLowerCase());
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    return matchCat && matchTag && matchSearch;
   });
   if (sortBy === "price_asc")  filtered = [...filtered].sort((a, b) => a.price - b.price);
   if (sortBy === "price_desc") filtered = [...filtered].sort((a, b) => b.price - a.price);
@@ -134,6 +142,13 @@ function Products() {
             </select>
           </div>
           <div className="products-sort">
+            <select value={activeTag} onChange={(e) => handleTagChange(e.target.value)}>
+              {tags.map((t) => (
+                <option key={t} value={t}>{t === "All" ? "All Tags" : t}</option>
+              ))}
+            </select>
+          </div>
+          <div className="products-sort">
             <select value={sortBy} onChange={(e) => handleSortChange(e.target.value)}>
               {sortOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -167,12 +182,17 @@ function Products() {
           <div className="products-empty">
             <span className="products-empty-icon">✦</span>
             <p>No products found!</p>
-            {search && (
+            { (search || activeTag !== "All" || activeCategory !== "All" || sortBy !== "default") && (
               <button
                 className="products-clear-btn"
-                onClick={() => navigate("/products")}
+                onClick={() => {
+                  setActiveCategory("All");
+                  setActiveTag("All");
+                  setSortBy("default");
+                  navigate("/products");
+                }}
               >
-                 Clear Search
+                 Clear Filters
               </button>
             )}
           </div>
@@ -200,12 +220,16 @@ function Products() {
                   <p className="product-category-tag">{p.category}</p>
                   <h3>{p.name}</h3>
                   <p className="product-price">Rs. {p.price.toLocaleString()}</p>
-                  <button
-                    className={`add-cart-btn ${addedId === p.id ? "added" : ""}`}
-                    onClick={(e) => { e.stopPropagation(); handleAddToCart(p.id); }}
-                  >
-                    {addedId === p.id ? "✓ Added!" : "Add to Cart"}
-                  </button>
+                  {p.stock <= 0 ? (
+                    <span className="out-of-stock-label">Out of Stock</span>
+                  ) : (
+                    <button
+                      className={`add-cart-btn ${addedId === p.id ? "added" : ""}`}
+                      onClick={(e) => { e.stopPropagation(); handleAddToCart(p.id); }}
+                    >
+                      {addedId === p.id ? "✓ Added!" : "Add to Cart"}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

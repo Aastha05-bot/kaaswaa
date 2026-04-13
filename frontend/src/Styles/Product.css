@@ -146,8 +146,8 @@
 
 .products-grid-full {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 24px;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 20px;
 }
 
 /* Reuse product card from home.css */
@@ -169,7 +169,7 @@
 }
 
 .product-img {
-  height: 260px;
+  height: 420px;
   position: relative;
   overflow: hidden;
   background: var(--pink-soft);
@@ -266,14 +266,18 @@
   background: var(--pink-pale);
   border: 1.5px solid var(--pink);
   color: var(--pink);
-  padding: 9px;
+  padding: 8px 12px;
   border-radius: 25px;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
   font-family: 'DM Sans', sans-serif;
   margin-top: auto;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .add-cart-btn:hover {
@@ -371,7 +375,7 @@
 /* RESPONSIVE */
 @media (max-width: 1200px) {
   .products-grid-full {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
@@ -400,7 +404,7 @@
   }
 
   .products-grid-full {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .products-search {

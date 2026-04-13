@@ -2,6 +2,8 @@ const express     = require("express");
 const router      = express.Router();
 const db          = require("../db");
 const verifyToken = require("../middleware/auth");
+const { sendEmail } = require("../utils/mailer");
+const getOrderConfirmationTemplate = require("../templates/orderConfirmationTemplate");
 
 
 // ── POST /api/payments  (protected) ──────────────────────
@@ -56,7 +58,25 @@ router.post("/payments", verifyToken, (req, res) => {
                 "UPDATE orders SET order_status = 'Confirmed' WHERE order_id = ?",
                 [order_id],
                 (err4) => {
-                  if (err4) console.error("Order status update error:", err4);
+                  if (err4) {
+                    console.error("Order status update error:", err4);
+                  } else {
+                    // Send order confirmation email
+                    const fetchOrderSql = `
+                      SELECT o.total, u.email 
+                      FROM orders o 
+                      JOIN users u ON o.user_id = u.user_id 
+                      WHERE o.order_id = ?
+                    `;
+                    db.query(fetchOrderSql, [order_id], (err5, rows) => {
+                      if (!err5 && rows.length > 0) {
+                        const { total, email } = rows[0];
+                        const subject = `Order Confirmed - #${order_id}`;
+                        const html = getOrderConfirmationTemplate(order_id, total);
+                        sendEmail(email, subject, html).catch(e => console.error("Payment Confirmation Email Failed:", e));
+                      }
+                    });
+                  }
                 }
               );
 

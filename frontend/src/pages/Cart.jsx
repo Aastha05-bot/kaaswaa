@@ -127,6 +127,7 @@ function Cart() {
                     <div className="cart-item-custom-box">
                       {cust.wrapping && <p><span>Wrapping:</span> {cust.wrapping} {cust.wrappingColor ? `(${cust.wrappingColor})` : ""}</p>}
                       {cust.giftMessage && <p><span>Message:</span> "{cust.giftMessage}"</p>}
+                      {cust.notes && <p><span>Notes:</span> "{cust.notes}"</p>}
                       {cust.selectedFlowers && cust.selectedFlowers.length > 0 && (
                         <p><span>Bouquet Add-ons:</span> {cust.selectedFlowers.map(f => `${f.name} x${f.qty}`).join(", ")}</p>
                       )}

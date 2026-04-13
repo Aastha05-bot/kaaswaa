@@ -304,10 +304,30 @@ function OrdersTab({ userId, token }) {
                   <li key={index} className="order-product-row">
                     <div className="product-meta">
                        {item.image_url && <img src={item.image_url} alt="" className="product-thumb" />}
-                       <div>
-                         <p className="product-name">{item.product_name}</p>
-                         <p className="product-qty">Qty: {item.quantity}</p>
-                       </div>
+                        <div>
+                          <p className="product-name">{item.product_name}</p>
+                          <p className="product-qty">Qty: {item.quantity}</p>
+                          
+                          {/* Rendering Customization Details in Order History */}
+                          {item.customization && (() => {
+                            let cust;
+                            try {
+                              cust = typeof item.customization === 'string' ? JSON.parse(item.customization) : item.customization;
+                            } catch (e) { return null; }
+                            if (!cust) return null;
+                            return (
+                              <div className="order-item-cust">
+                                {cust.wrapping && <p>Wrapping: {cust.wrapping} {cust.wrappingColor ? `(${cust.wrappingColor})` : ""}</p>}
+                                {cust.giftMessage && <p>Message: "{cust.giftMessage}"</p>}
+                                {cust.notes && <p>Notes: "{cust.notes}"</p>}
+                                {cust.selectedFlowers && cust.selectedFlowers.length > 0 && (
+                                  <p>Add-ons: {cust.selectedFlowers.map(f => `${f.name} x${f.qty}`).join(", ")}</p>
+                                )}
+                                {cust.size && <p>Size: {cust.size}</p>}
+                              </div>
+                            );
+                          })()}
+                        </div>
                     </div>
                     <strong className="product-price">Rs. {parseFloat(item.price * item.quantity).toLocaleString()}</strong>
                   </li>
@@ -441,6 +461,15 @@ function ReviewsTab({ userId, token }) {
             <h3>{r.product_name}</h3>
             <div className="review-rating">{"★".repeat(r.ratings)}{"☆".repeat(5 - r.ratings)}</div>
             <p className="review-comment">"{r.comment}"</p>
+            {r.image_url && (
+              <div className="review-img" style={{ marginTop: '10px' }}>
+                <img 
+                  src={`http://localhost:5000${r.image_url}`} 
+                  alt="Review" 
+                  style={{ maxWidth: '120px', borderRadius: '8px' }} 
+                />
+              </div>
+            )}
             <p className="item-date">{new Date(r.feedback_date).toLocaleDateString()}</p>
           </div>
           <button className="profile-btn btn-danger" style={{ padding: '8px 12px', marginTop: 0 }} onClick={() => handleDelete(r.feedback_id)}>

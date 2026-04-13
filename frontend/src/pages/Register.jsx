@@ -57,6 +57,8 @@ function Register() {
 
   return (
     <div className="wrapper">
+      <Link to="/login" className="back-link">&lt; Go Back</Link>
+
       <div className="card">
         <div className="left">
           <img src="/logo.png" alt="Kaa Swaa Logo" className="logo" />
@@ -65,6 +67,8 @@ function Register() {
         </div>
         <div className="right">
           <h2>SIGN UP</h2>
+
+
           <form onSubmit={handleSubmit}>
             <input type="text" placeholder="Username" required
               value={username} onChange={(e) => setUsername(e.target.value)} />

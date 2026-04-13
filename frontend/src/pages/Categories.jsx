@@ -20,6 +20,8 @@ function Categories() {
   const [addedId,        setAddedId]        = useState(null);
   const [loadingCats,    setLoadingCats]    = useState(true);
   const [loadingProds,   setLoadingProds]   = useState(true);
+  const [currentPage,    setCurrentPage]    = useState(1);
+  const ITEMS_PER_PAGE = 12;
 
   // ── Fetch categories ───────────────────────────────────
   useEffect(() => {
@@ -85,6 +87,23 @@ function Categories() {
     ? products
     : products.filter((p) => p.category === activeCategoryName);
 
+  // ── Pagination logic ───────────────────────────────────
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const startIdx   = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginated  = filtered.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+
+  const goToPage = (page) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const getPageNumbers = () => {
+    if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (currentPage <= 3) return [1, 2, 3, 4, "...", totalPages];
+    if (currentPage >= totalPages - 2) return [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+  };
+
   return (
     <div className="categories-page-wrapper">
       <Header
@@ -142,7 +161,7 @@ function Categories() {
             </div>
           ) : (
             <div className="categories-grid-products">
-              {filtered.map((p, i) => (
+              {paginated.map((p, i) => (
                 <div
                   className="product-card"
                   key={p.id}
@@ -170,6 +189,39 @@ function Categories() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── PAGINATION ── */}
+          {totalPages > 1 && (
+            <div className="pagination">
+              <button
+                className="page-btn page-arrow"
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ‹
+              </button>
+              {getPageNumbers().map((page, i) =>
+                page === "..." ? (
+                  <span key={`ellipsis-${i}`} className="page-ellipsis">…</span>
+                ) : (
+                  <button
+                    key={page}
+                    className={`page-btn ${currentPage === page ? "active" : ""}`}
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+              <button
+                className="page-btn page-arrow"
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                ›
+              </button>
             </div>
           )}
         </main>

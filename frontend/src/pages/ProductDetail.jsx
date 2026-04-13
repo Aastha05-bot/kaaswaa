@@ -26,10 +26,14 @@ function ProductDetail() {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [notes, setNotes] = useState("");
+  const [reviewImage, setReviewImage] = useState(null);
   const [reviewMsg, setReviewMsg] = useState("");
   const [submitting, setSubmitting] = useState(false);
   // Track per-review like/dislike counts (client-side only until backend supports it)
   const [reviewVotes, setReviewVotes] = useState({});
+  const [selectedSize, setSelectedSize] = useState("");
+  const [sizeError, setSizeError] = useState("");
 
   useEffect(() => {
     fetchProduct();
@@ -69,8 +73,21 @@ function ProductDetail() {
 
   const handleAddToCart = async () => {
     if (!isLoggedIn) { navigate("/login"); return; }
-    addToCart(product.product_id, 1);
+    
+    if (product.category_name?.toLowerCase() === "clothes" && !selectedSize) {
+      setSizeError("Please select a size");
+      return;
+    }
+    setSizeError("");
+
+    const customization = { 
+      notes: notes || null,
+      size: selectedSize || null
+    };
+    addToCart(product.product_id, 1, customization);
     setAddedCart(true);
+    setNotes("");
+    setSelectedSize("");
     setTimeout(() => setAddedCart(false), 2000);
   };
 
@@ -85,21 +102,26 @@ function ProductDetail() {
     if (!rating) { setReviewMsg("Please select a rating"); return; }
 
     setSubmitting(true);
+    const formData = new FormData();
+    formData.append("product_id", product.product_id);
+    formData.append("comment", comment);
+    formData.append("ratings", rating);
+    if (reviewImage) {
+      formData.append("review_image", reviewImage);
+    }
+
     try {
       const res = await fetch(`${BASE}/feedback`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeader },
-        body: JSON.stringify({
-          product_id: product.product_id,
-          comment,
-          ratings: rating,
-        }),
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
       });
       const data = await res.json();
       if (!res.ok) { setReviewMsg(data.message); return; }
       setReviewMsg("Review submitted!");
       setComment("");
       setRating(0);
+      setReviewImage(null);
       fetchReviews();
     } catch {
       setReviewMsg("Failed to submit review");
@@ -178,28 +200,107 @@ function ProductDetail() {
             )}
 
             <p className="pd-price">Rs. {parseFloat(product.price).toLocaleString()}</p>
-            <p className="pd-desc">{product.description || "No description available."}</p>
+            
+            {product.category_name?.toLowerCase() === "clothes" && (
+              <div className="pd-size-selector">
+                <label>Select Size <span className="pd-required">*</span></label>
+                <div className="pd-sizes">
+                  {['S', 'M', 'L', 'XL'].map(s => (
+                    <button 
+                      key={s} 
+                      className={`pd-size-btn ${selectedSize === s ? 'active' : ''}`}
+                      onClick={() => { setSelectedSize(s); setSizeError(""); }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                {sizeError && <p className="pd-size-error">{sizeError}</p>}
+              </div>
+            )}
 
             <div className="pd-actions">
-              <button
-                className={`pd-cart-btn ${addedCart ? "added" : ""}`}
-                onClick={handleAddToCart}
-              >
-                {addedCart ? "✓ Added to Cart!" : "Add to Cart"}
-              </button>
-              <button
-                className="pd-customize-btn"
-                onClick={() => navigate(`/customize/${product.product_id}`)}
-              >
-                Customize
-              </button>
-              <button
-                className={`pd-wish-btn ${inWishlist ? "active" : ""}`}
-                onClick={handleWishlist}
-              >
-                {inWishlist ? "♥ Wishlisted" : "♡ Wishlist"}
-              </button>
+              {product.stock <= 0 ? (
+                <div className="pd-out-of-stock-wrap">
+                  <div className="pd-oos-buttons">
+                    <span className="pd-oos-label">Out of Stock</span>
+                    <button
+                      className={`pd-wish-btn ${inWishlist ? "active" : ""}`}
+                      onClick={handleWishlist}
+                    >
+                      {inWishlist ? "♥" : "♡"}
+                    </button>
+                  </div>
+                  <p className="pd-oos-text">This item is currently unavailable. You can add it to your wishlist to save it for later!</p>
+                </div>
+              ) : (
+                <div className="pd-buy-section">
+                  {product.category_name?.toLowerCase().includes("flower") ? (
+                    <div className="pd-flower-info">
+                       <p className="pd-msg-tip">This product can be customized!</p>
+                       <button
+                         className="pd-customize-btn"
+                         onClick={() => navigate(`/customize/${product.product_id}`)}
+                       >
+                         Customize & Build Bouquet
+                       </button>
+                    </div>
+                  ) : (
+                    <div className="pd-notes-input-wrap">
+                      <label>Notes for loved ones (optional)</label>
+                      <textarea 
+                        placeholder="Write a message..." 
+                        value={notes} 
+                        onChange={e => setNotes(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  )}
+
+                  <div className="pd-action-buttons">
+                    <button
+                      className={`pd-cart-btn ${addedCart ? "added" : ""}`}
+                      onClick={handleAddToCart}
+                    >
+                      {addedCart ? "✓ Added!" : "Add to Cart"}
+                    </button>
+                    <button
+                      className={`pd-wish-btn ${inWishlist ? "active" : ""}`}
+                      onClick={handleWishlist}
+                    >
+                      {inWishlist ? "♥" : "♡ Wishlist"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+          </div>
+        </div>
+
+        {/* ── Product Details Section ── */}
+        <div className="pd-details-section">
+          <div className="pd-details-box">
+            <h2 className="pd-details-title">Product Details</h2>
+            <div className="pd-details-content">
+              {product.description ? (
+                <ul className="pd-details-list">
+                  {product.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                    <li key={i}>{line.trim().startsWith('•') ? line.trim().substring(1).trim() : line.trim()}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No extra details available for this product.</p>
+              )}
+            </div>
+          </div>
+          <div className="pd-disclaimer-box">
+            <div className="pd-disclaimer-header">
+              <span className="pd-disclaimer-icon">⚠️</span>
+              <h3>Disclaimer</h3>
+            </div>
+            <p className="pd-disclaimer-text">
+              The contents of this website are for informational purposes only and not intended to be a substitute for professional medical advice, diagnosis, or treatment. Please seek the advice of the physician or other qualified health provider with any question you may have regarding a medical condition. Do not disregard professional medical advice or delay in seeking it because of something you have read on this website.
+            </p>
           </div>
         </div>
 
@@ -258,6 +359,18 @@ function ProductDetail() {
                 onChange={e => setComment(e.target.value)}
                 rows={3}
               />
+              <div style={{ marginTop: '10px', marginBottom: '10px' }}>
+                <label style={{ fontSize: '13px', color: '#e85a8a', cursor: 'pointer', display: 'inline-block', padding: '6px 12px', border: '1px solid #e85a8a', borderRadius: '4px' }}>
+                  {reviewImage ? "✓ Photo Added" : "Add Photo"}
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={e => setReviewImage(e.target.files[0])} 
+                    style={{ display: 'none' }} 
+                  />
+                </label>
+                {reviewImage && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>{reviewImage.name}</span>}
+              </div>
               {reviewMsg && <p className="pd-review-msg">{reviewMsg}</p>}
               <button type="submit" disabled={submitting}>
                 {submitting ? "Submitting..." : "Submit Review"}
@@ -287,6 +400,15 @@ function ProductDetail() {
                       </span>
                     </div>
                     {r.comment && <p className="pd-review-comment">{r.comment}</p>}
+                    {r.image_url && (
+                      <div className="pd-review-img-wrap" style={{ marginTop: '12px' }}>
+                        <img 
+                          src={`http://localhost:5000${r.image_url}`} 
+                          alt="Review" 
+                          style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '12px', objectFit: 'cover' }} 
+                        />
+                      </div>
+                    )}
                     <div className="pd-review-actions">
                       <button
                         className={`pd-action-btn ${votes.voted === "like" ? "pd-action-btn--active" : ""}`}

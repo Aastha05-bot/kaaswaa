@@ -312,16 +312,18 @@ export default function Staff() {
                       <td className="td-muted">{p.category_name || "—"}</td>
                       <td>Rs. {parseFloat(p.price).toLocaleString()}</td>
                       <td>
-                        <input
-                          type="number"
+                        <select
                           className="status-select"
-                          style={{ width: "80px", padding: "5px" }}
-                          defaultValue={p.stock}
-                          onBlur={(e) => {
+                          style={{ width: "120px", padding: "5px" }}
+                          value={p.stock > 0 ? "1" : "0"}
+                          onChange={(e) => {
                             const val = parseInt(e.target.value);
-                            if (val !== p.stock) handleStockUpdate(p.product_id, val);
+                            handleStockUpdate(p.product_id, val);
                           }}
-                        />
+                        >
+                          <option value="1">In Stock</option>
+                          <option value="0">Out of Stock</option>
+                        </select>
                       </td>
                       <td>
                         <button
@@ -388,6 +390,7 @@ export default function Staff() {
                               <p style={{ margin: "0 0 6px", fontWeight: "700", color: "#e85a8a", textTransform: "uppercase", fontSize: "10px", letterSpacing: "0.5px" }}>Customer Customization</p>
                               {cust.wrapping && <p style={{ margin: "2px 0" }}><strong>Wrapping:</strong> {cust.wrapping} {cust.wrappingColor ? `(${cust.wrappingColor})` : ""}</p>}
                               {cust.giftMessage && <p style={{ margin: "2px 0" }}><strong>Message:</strong> "{cust.giftMessage}"</p>}
+                              {cust.notes && <p style={{ margin: "2px 0" }}><strong>Notes:</strong> "{cust.notes}"</p>}
                               {cust.selectedFlowers && cust.selectedFlowers.length > 0 && (
                                 <p style={{ margin: "2px 0" }}><strong>Add-ons:</strong> {cust.selectedFlowers.map(f => `${f.name} x${f.qty}`).join(", ")}</p>
                               )}

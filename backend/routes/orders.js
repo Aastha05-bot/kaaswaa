@@ -2,6 +2,10 @@ const express     = require("express");
 const router      = express.Router();
 const db          = require("../db");
 const verifyToken = require("../middleware/auth");
+const { sendEmail } = require("../utils/mailer");
+const getOrderConfirmationTemplate = require("../templates/orderConfirmationTemplate");
+const getOrderStatusUpdateTemplate = require("../templates/orderStatusUpdateTemplate");
+const getOrderCancellationTemplate = require("../templates/orderCancellationTemplate");
 
 /*
   Requires an order_items table (if you don't have it, run this):
@@ -109,6 +113,16 @@ router.post("/orders", verifyToken, (req, res) => {
                   if (err5) console.error("Notification error (COD):", err5);
                 }
               );
+
+              // 5. Send order confirmation email (COD happens immediately)
+              db.query("SELECT email FROM users WHERE user_id = ?", [user_id], (err6, users) => {
+                if (!err6 && users.length > 0) {
+                  const to = users[0].email;
+                  const subject = `Order Confirmed - #${orderId}`;
+                  const html = getOrderConfirmationTemplate(orderId, total_amount);
+                  sendEmail(to, subject, html).catch(e => console.error("Order Confirmation Email Failed:", e));
+                }
+              });
             }
           );
         }
@@ -177,14 +191,25 @@ router.get("/orders/detail/:orderId", verifyToken, (req, res) => {
 router.get("/admin/sales-report", verifyToken, async (req, res) => {
   if (req.user.role !== "admin") return res.status(403).json({ message: "Forbidden" });
 
+  const { range = "monthly" } = req.query;
+  let dateFilter = "";
+  
+  if (range === "weekly") {
+    dateFilter = "AND order_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+  } else if (range === "monthly") {
+    dateFilter = "AND order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+  } else if (range === "yearly") {
+    dateFilter = "AND order_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR)";
+  }
+
   try {
-    // 1. Basic Stats (Shipped or Delivered only)
+    // 1. Basic Stats (Shipped, Delivered, or Packed)
     const [statsResult] = await db.promise().query(`
       SELECT 
         COUNT(order_id) as total_orders,
-        SUM(total) as total_revenue
+        COALESCE(SUM(total), 0) as total_revenue
       FROM orders 
-      WHERE order_status IN ('Delivered', 'Shipped')
+      WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
     `);
 
     // 2. Top products
@@ -193,26 +218,56 @@ router.get("/admin/sales-report", verifyToken, async (req, res) => {
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
       JOIN product p ON oi.product_id = p.product_id
-      WHERE o.order_status IN ('Delivered', 'Shipped')
+      WHERE LOWER(o.order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
       GROUP BY p.product_id
       ORDER BY total_sold DESC
       LIMIT 10
     `);
 
-    // 3. Sales by day
-    const [salesByDate] = await db.promise().query(`
-      SELECT DATE(order_date) as date, SUM(total) as revenue, COUNT(order_id) as orders
-      FROM orders
-      WHERE order_status IN ('Delivered', 'Shipped')
-      GROUP BY DATE(order_date)
-      ORDER BY DATE(order_date) DESC
-      LIMIT 30
+    // 3. Sales Trend
+    let trendSql = "";
+    if (range === "yearly") {
+      // Group by Month for yearly
+      trendSql = `
+        SELECT DATE_FORMAT(order_date, '%Y-%m') as date, SUM(total) as revenue, COUNT(order_id) as orders
+        FROM orders
+        WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+        GROUP BY DATE_FORMAT(order_date, '%Y-%m')
+        ORDER BY date DESC
+      `;
+    } else {
+      trendSql = `
+        SELECT DATE(order_date) as date, SUM(total) as revenue, COUNT(order_id) as orders
+        FROM orders
+        WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+        GROUP BY DATE(order_date)
+        ORDER BY DATE(order_date) DESC
+      `;
+    }
+    const [salesByDate] = await db.promise().query(trendSql);
+
+    // 4. Detailed Sales for PDF
+    const [detailedSales] = await db.promise().query(`
+      SELECT 
+        p.product_name, 
+        p.image_url, 
+        o.order_id, 
+        o.user_id, 
+        o.total, 
+        pay.payment_method
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.order_id
+      JOIN product p ON oi.product_id = p.product_id
+      LEFT JOIN payments pay ON o.order_id = pay.order_id
+      WHERE LOWER(o.order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+      ORDER BY o.order_date DESC
     `);
 
     res.json({
-      stats: statsResult[0],
+      stats: statsResult[0] || { total_orders: 0, total_revenue: 0 },
       topProducts,
-      salesByDate
+      salesByDate,
+      detailedSales
     });
   } catch (err) {
     console.error("SALES REPORT ERROR:", err);
@@ -273,13 +328,28 @@ router.put("/orders/:orderId", verifyToken, (req, res) => {
   const { order_status } = req.body;
   const { orderId } = req.params;
   if (!order_status) return res.status(400).json({ message: "Missing order_status" });
+
+  // BLOCK ADMIN/STAFF FROM CANCELLING
+  if (order_status.toLowerCase() === "cancelled") {
+    return res.status(403).json({ message: "Admins/Staff cannot cancel orders. Only users can cancel their own orders." });
+  }
+
   db.query("UPDATE orders SET order_status = ? WHERE order_id = ?", [order_status, orderId], (err) => {
     if (err) return res.status(500).json({ message: "Failed to update order status" });
 
-    // Fetch user_id for notification
-    db.query("SELECT user_id FROM orders WHERE order_id = ?", [orderId], (err2, rows) => {
+    // Fetch user email and user_id for notification & email
+    const fetchUserSql = `
+      SELECT o.user_id, u.email 
+      FROM orders o 
+      JOIN users u ON o.user_id = u.user_id 
+      WHERE o.order_id = ?
+    `;
+    db.query(fetchUserSql, [orderId], (err2, rows) => {
       if (!err2 && rows.length > 0) {
         const userId = rows[0].user_id;
+        const toEmail = rows[0].email;
+
+        // DB Notification
         let msg = `Your order #${orderId} status has been updated to: ${order_status}`;
         const statusLower = order_status.toLowerCase();
         if (statusLower === "confirmed") {
@@ -294,6 +364,11 @@ router.put("/orders/:orderId", verifyToken, (req, res) => {
           msg = "Your order has been delivered successfully";
         }
         db.query("INSERT INTO notifications (user_id, message, is_read) VALUES (?, ?, FALSE)", [userId, msg]);
+
+        // Status Update Email
+        const subject = `Order Status Update - #${orderId}`;
+        const html = getOrderStatusUpdateTemplate(orderId, order_status);
+        sendEmail(toEmail, subject, html).catch(e => console.error("Status Update Email Failed:", e));
       }
     });
 
@@ -323,7 +398,16 @@ router.put("/orders/user/cancel/:orderId", verifyToken, (req, res) => {
     db.query("UPDATE orders SET order_status = 'Cancelled' WHERE order_id = ?", [orderId], (err2) => {
       if (err2) return res.status(500).json({ message: "Failed to cancel order." });
       
-      // 3. Optional: Notification for Admin (could be added later)
+      // 3. Send cancellation email
+      db.query("SELECT email FROM users WHERE user_id = ?", [userId], (err3, users) => {
+        if (!err3 && users.length > 0) {
+          const to = users[0].email;
+          const subject = `Order Cancelled - #${orderId}`;
+          const html = getOrderCancellationTemplate(orderId);
+          sendEmail(to, subject, html).catch(e => console.error("Cancellation Email Failed:", e));
+        }
+      });
+
       res.json({ message: "Order cancelled successfully." });
     });
   });

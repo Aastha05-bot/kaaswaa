@@ -89,15 +89,26 @@ function Login() {
 
   return (
     <div className="wrapper">
-      <div className="card">
-        <div className="left">
-          <img src="/logo.png" alt="Kaa Swaa Logo" className="logo" />
-          <h1>Kaa Swaa:</h1>
-          <p className="tagline">Crafted with माया.</p>
-        </div>
+      {mode !== "login" && (
+        <span className="back-link" onClick={() => { setMode("login"); setError(""); setSuccessMsg(""); }}>
+          &lt; Go Back
+        </span>
+      )}
+
+
+      <div className={`card ${mode !== "login" ? "single-panel" : ""}`}>
+        {mode === "login" && (
+          <div className="left">
+            <img src="/logo.png" alt="Kaa Swaa Logo" className="logo" />
+            <h1>Kaa Swaa:</h1>
+            <p className="tagline">Crafted with माया.</p>
+          </div>
+        )}
         
         <div className="right">
           {error && <p className="error" style={{ marginBottom: '15px' }}>{error}</p>}
+
+
           {successMsg && <p className="success-msg" style={{ color: 'green', fontSize: '14px', marginBottom: '15px' }}>{successMsg}</p>}
           
           {/* ----- MODE: LOGIN ----- */}
@@ -140,11 +151,9 @@ function Login() {
                   {loading ? "Sending..." : "Send Code"}
                 </button>
               </form>
-              <p className="text" style={{ marginTop: '20px', cursor: 'pointer' }} onClick={() => setMode("login")}>
-                <span>← Back to Log In</span>
-              </p>
             </>
           )}
+
 
           {/* ----- MODE: RESET PASSWORD ----- */}
           {mode === "reset" && (
@@ -158,11 +167,9 @@ function Login() {
                   {loading ? "Resetting..." : "Reset Password"}
                 </button>
               </form>
-              <p className="text" style={{ marginTop: '20px', cursor: 'pointer' }} onClick={() => setMode("login")}>
-                <span>← Back to Log In</span>
-              </p>
             </>
           )}
+
         </div>
       </div>
     </div>

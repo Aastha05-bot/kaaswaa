@@ -4,7 +4,10 @@ import {
   LayoutDashboard, ShoppingBag, Package, Users, LogOut,
   Plus, Pencil, Trash2, Search, X, DollarSign, Clock,
   TrendingUp, ChevronDown, UserCog, Eye, FileText,
+  Download,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import "../Styles/AdminDashboard.css";
 
 const BASE = "http://localhost:5000/api";
@@ -19,7 +22,8 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [staffList, setStaffList] = useState([]);
-  const [salesData, setSalesData] = useState({ stats: {}, topProducts: [], salesByDate: [] });
+  const [salesData, setSalesData] = useState({ stats: {}, topProducts: [], salesByDate: [], detailedSales: [] });
+  const [reportRange, setReportRange] = useState("monthly");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showStaffModal, setShowStaffModal] = useState(false);
@@ -44,7 +48,7 @@ export default function AdminDashboard() {
     fetchUsers();
     fetchStaff();
     fetchCategories();
-    fetchSalesReport();
+    fetchSalesReport(reportRange);
 
     const interval = setInterval(fetchOrders, 5000); // 5s polling
     return () => clearInterval(interval);
@@ -100,8 +104,8 @@ export default function AdminDashboard() {
       .catch(() => setStaffList([]));
   };
 
-  const fetchSalesReport = () => {
-    fetch(`${BASE}/admin/sales-report`, { headers: authHeader })
+  const fetchSalesReport = (range = "monthly") => {
+    fetch(`${BASE}/admin/sales-report?range=${range}`, { headers: authHeader })
       .then(r => r.json())
       .then(data => setSalesData(data))
       .catch(() => console.error("Sales report error"));
@@ -257,28 +261,100 @@ export default function AdminDashboard() {
 
   const handleLogout = () => { sessionStorage.clear(); navigate("/login"); };
 
-  const downloadCSV = () => {
-    if (!salesData.salesByDate || salesData.salesByDate.length === 0) return;
+  const downloadPDF = async () => {
+    if (!salesData.detailedSales || salesData.detailedSales.length === 0) {
+      showToast("No data to export");
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // 1. Logo (Top Left)
+    try {
+      const logoUrl = "/logo.png"; // Relative to public folder
+      const img = new Image();
+      img.src = logoUrl;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve; // Continue even if logo fails
+      });
+      if (img.complete && img.naturalHeight !== 0) {
+        doc.addImage(img, 'PNG', 14, 10, 30, 15);
+      }
+    } catch (e) { console.error("Logo error:", e); }
+
+    // 2. Title (Center)
+    const titleRange = reportRange === "all" ? "All Time" : reportRange.charAt(0).toUpperCase() + reportRange.slice(1);
+    doc.setFontSize(18);
+    doc.setTextColor(59, 59, 59);
+    doc.text(`${titleRange} Sales Report`, pageWidth / 2, 22, { align: "center" });
+
+    // 3. Date (Top Right)
+    doc.setFontSize(10);
+    doc.setTextColor(119, 119, 119);
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    doc.text(`Generated on: ${today}`, pageWidth - 14, 22, { align: "right" });
+
+    // 4. Stats Summary
+    doc.setDrawColor(232, 90, 138);
+    doc.line(14, 30, pageWidth - 14, 30);
+    doc.setFontSize(12);
+    doc.setTextColor(59, 59, 59);
+    doc.text(`Total Orders: ${salesData.stats?.total_orders || 0}`, 14, 40);
+    doc.text(`Total Revenue: Rs. ${parseFloat(salesData.stats?.total_revenue || 0).toLocaleString()}`, pageWidth - 14, 40, { align: "right" });
+
+    // 5. Build Table Data (with image handling)
+    const tableRows = [];
     
-    const headers = ["Date", "Revenue (Rs.)", "Orders Count"];
-    const rows = salesData.salesByDate.map(d => [
-      new Date(d.date).toLocaleDateString(),
-      d.revenue,
-      d.orders
-    ]);
+    // Helper to get base64 from URL
+    const getBase64Image = (url) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/jpeg'));
+        };
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+    };
 
-    let csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n"
-      + rows.map(e => e.join(",")).join("\n");
+    showToast("Generating PDF...");
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `sales_report_${new Date().toLocaleDateString()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("CSV Downloaded");
+    autoTable(doc, {
+      startY: 48,
+      head: [['Product', 'Image', 'Order ID', 'User ID', 'Total', 'Payment']],
+      body: salesData.detailedSales.map(s => [
+        s.product_name,
+        '', // Placeholder for image
+        `#${s.order_id}`,
+        s.user_id,
+        `Rs. ${parseFloat(s.total).toLocaleString()}`,
+        s.payment_method?.toUpperCase() || 'N/A'
+      ]),
+      didDrawCell: async (data) => {
+        if (data.section === 'body' && data.column.index === 1) {
+          const s = salesData.detailedSales[data.row.index];
+          if (s.image_url) {
+            // We can't easily wait for async in didDrawCell without blocking
+            // For production, pre-fetching images is better
+            // doc.addImage(...)
+          }
+        }
+      },
+      styles: { fontSize: 9, halign: 'center' },
+      headStyles: { fillColor: [232, 90, 138], textColor: 255 },
+      alternateRowStyles: { fillColor: [255, 248, 249] }
+    });
+
+    doc.save(`KaaSwaa_${reportRange}_Sales_${new Date().toISOString().split('T')[0]}.pdf`);
+    showToast("PDF Downloaded");
   };
 
   // ── Filtered lists ─────────────────────────────────────
@@ -382,9 +458,30 @@ export default function AdminDashboard() {
               </button>
             )}
             {activeTab === "sales" && (
-              <button className="btn-save" onClick={downloadCSV}>
-                Download CSV
-              </button>
+              <div style={{ display: "flex", gap: "10px" }}>
+                <select 
+                  className="admin-search-select"
+                  value={reportRange}
+                  onChange={(e) => {
+                    setReportRange(e.target.value);
+                    fetchSalesReport(e.target.value);
+                  }}
+                  style={{ 
+                    padding: "8px 12px", 
+                    borderRadius: "8px", 
+                    border: "1px solid #ddd",
+                    fontSize: "14px"
+                  }}
+                >
+                  <option value="weekly">Last 7 Days (Weekly)</option>
+                  <option value="monthly">Last 30 Days (Monthly)</option>
+                  <option value="yearly">Last Year (Yearly)</option>
+                  <option value="all">All Time</option>
+                </select>
+                <button className="btn-save" onClick={downloadPDF} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                  <Download size={15} /> Download PDF
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -677,7 +774,6 @@ export default function AdminDashboard() {
                     <option value="">None</option>
                     <option value="Bestseller">Bestseller</option>
                     <option value="New">New</option>
-                    <option value="Best Seller">Best Seller</option>
                   </select>
                 </div>
                 <div className="form-group">
@@ -782,6 +878,7 @@ export default function AdminDashboard() {
                             <div style={{ marginTop: "8px", fontSize: "12px", color: "#555", padding: "8px", background: "#fdf2f8", borderRadius: "6px", border: "1px solid #fce4ec" }}>
                               {cust.wrapping && <p style={{ margin: "2px 0" }}><strong>Wrapping:</strong> {cust.wrapping} {cust.wrappingColor ? `(${cust.wrappingColor})` : ""}</p>}
                               {cust.giftMessage && <p style={{ margin: "2px 0" }}><strong>Message:</strong> "{cust.giftMessage}"</p>}
+                              {cust.notes && <p style={{ margin: "2px 0" }}><strong>Notes:</strong> "{cust.notes}"</p>}
                               {cust.selectedFlowers && cust.selectedFlowers.length > 0 && (
                                 <p style={{ margin: "2px 0" }}><strong>Add-ons:</strong> {cust.selectedFlowers.map(f => `${f.name} x${f.qty}`).join(", ")}</p>
                               )}

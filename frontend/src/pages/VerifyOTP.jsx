@@ -44,14 +44,13 @@ function VerifyOTP() {
 
   return (
     <div className="wrapper">
-      <div className="card">
-        <div className="left">
-          <img src="/logo.png" alt="Kaa Swaa Logo" className="logo" />
-          <h1>Kaa Swaa:</h1>
-          <p className="tagline">Crafted with माया.</p>
-        </div>
+      <Link to="/login" className="back-link">&lt; Go Back</Link>
+
+      <div className="card single-panel">
         <div className="right">
           <h2>VERIFY EMAIL</h2>
+
+
           <p className="text">We sent a 6-digit code to <strong>{email}</strong></p>
           <form onSubmit={handleVerify}>
             <input
@@ -64,15 +63,15 @@ function VerifyOTP() {
             />
             {error && <p className="error">{error}</p>}
             <button type="submit" className="btn" disabled={loading}>
-              <Link to="/login" className="btn-link" >
               {loading ? "Verifying..." : "Verify"}
-              </Link>
             </button>
+
           </form>
           <p className="text">Didn't receive it? Check your spam folder.</p>
         </div>
       </div>
     </div>
+
   );
 }
 
