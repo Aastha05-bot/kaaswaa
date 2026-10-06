@@ -129,8 +129,41 @@
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
   white-space: nowrap;
+}
+
+.nav-auth-btn {
+  padding: 8px 18px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'DM Sans', sans-serif;
+  border: 1.5px solid var(--pink);
+}
+
+.nav-auth-btn.login {
+  background: var(--pink);
+  color: white;
+}
+
+.nav-auth-btn.login:hover {
+  background: var(--pink-light);
+  border-color: var(--pink-light);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(232, 90, 138, 0.2);
+}
+
+.nav-auth-btn.logout {
+  background: transparent;
+  color: var(--pink);
+}
+
+.nav-auth-btn.logout:hover {
+  background: var(--pink-soft);
+  transform: translateY(-1px);
 }
  
 .nav-icon-btn {

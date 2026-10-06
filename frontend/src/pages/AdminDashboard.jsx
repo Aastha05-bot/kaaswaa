@@ -4,13 +4,28 @@ import {
   LayoutDashboard, ShoppingBag, Package, Users, LogOut,
   Plus, Pencil, Trash2, Search, X, DollarSign, Clock,
   TrendingUp, ChevronDown, UserCog, Eye, FileText,
-  Download,
+  Download, PieChart as PieIcon, BarChart as BarIcon,
 } from "lucide-react";
+import { 
+  PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+} from 'recharts';
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "../Styles/AdminDashboard.css";
 
 const BASE = "http://localhost:5000/api";
+
+const DEFAULT_DESCRIPTIONS = {
+  "Keyring": "• Handcrafted with care and fine detail\n• Lightweight and easy to carry daily\n• Available in various cute designs\n• Compact — fits any bag or pocket\n• Makes a sweet and affordable gift",
+  "Pots": "• Decorative and functional for home use\n• Suitable for small indoor plants\n• Adds a charming touch to any space\n• Available in different sizes\n• Great as a standalone home accent piece",
+  "Dolls": "• Softly crafted with quality materials\n• Ideal for children and collectors alike\n• Perfect as a nursery or room decoration\n• Thoughtful gift suitable for all ages\n• Made with attention to detail and love",
+  "Bouquets": "• Fresh, fragrant, and beautifully arranged\n• Suitable for birthdays, anniversaries, and celebrations\n• Comes lovingly wrapped and ready to gift\n• Available in various sizes and styles\n• Perfect for any occasion or just because",
+  "Flowers": "• Wide selection including roses, lilies, tulips, daisies, and seasonal blooms\n• Pick your preferred flower types from the available selection\n• Choose your own colour palette or go fully mixed\n• Select bouquet size — small, medium, or large\n• Choose your wrapping style and ribbon colour\n• Add a personalised message or note card",
+  "Clothes": "• Soft, comfortable fabric for everyday wear\n• Sweet aesthetic with a cosy and flattering fit\n• Designed to suit various body types\n• Size Guide:\n• XS — fits up to approx. 40–45 kg\n• S — fits up to approx. 45–55 kg\n• M — fits up to approx. 55–65 kg\n• L — fits up to approx. 65–72 kg\n• XL — fits up to approx. 72–80 kg\n• XXL — fits up to approx. 80–90 kg",
+  "Accessories": "• Dainty and carefully curated pieces\n• Includes hair clips, bags, and more\n• Perfect finishing touch to any outfit\n• Suitable for everyday wear\n• Packaged beautifully for gifting",
+  "Bracelets": "• Delicate and handcrafted with care\n• Lightweight and comfortable for daily wear\n• Stackable — mix and layer multiple pieces\n• Made with durable materials to last\n• Comes gift-ready for yourself or a loved one"
+};
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -22,7 +37,8 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [staffList, setStaffList] = useState([]);
-  const [salesData, setSalesData] = useState({ stats: {}, topProducts: [], salesByDate: [], detailedSales: [] });
+  const [salesData, setSalesData] = useState({ stats: {}, topProducts: [], salesByDate: [], detailedSales: [], salesByCategory: [] });
+  const [salesMetric, setSalesMetric] = useState("revenue"); // "revenue" or "quantity"
   const [reportRange, setReportRange] = useState("monthly");
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -118,8 +134,9 @@ export default function AdminDashboard() {
 
   // ── Stats ──────────────────────────────────────────────
   const totalRevenue = orders
-    .filter(o => ["delivered", "shipped"].includes(o.order_status?.toLowerCase()))
+    .filter(o => ["delivered", "shipped", "packed", "processing", "confirmed"].includes(o.order_status?.toLowerCase()))
     .reduce((s, o) => s + parseFloat(o.total || 0), 0);
+
   const totalOrders = orders.length;
   const pendingOrders = orders.filter(o => ["pending", "confirmed", "processing", "packed"].includes(o.order_status?.toLowerCase())).length;
   const totalUsers = users.length;
@@ -143,6 +160,46 @@ export default function AdminDashboard() {
       image_url: p.image_url || "",
     });
     setShowModal(true);
+  };
+
+  const handleCategoryChange = (catId) => {
+    const selectedCat = categories.find(c => String(c.category_id) === String(catId));
+    if (!selectedCat) {
+      setForm(prev => ({ ...prev, category_id: catId }));
+      return;
+    }
+
+    const catName = selectedCat.category_name;
+    
+    // Improved matching: case-insensitive and handle singular/plural
+    const findMatch = (name) => {
+      if (!name) return null;
+      const lowerName = name.toLowerCase().trim();
+      return Object.keys(DEFAULT_DESCRIPTIONS).find(key => {
+        const lowerKey = key.toLowerCase();
+        return lowerKey === lowerName || 
+               lowerKey + 's' === lowerName || 
+               lowerName + 's' === lowerKey ||
+               (lowerKey === 'flowers' && lowerName === 'flower') ||
+               (lowerKey === 'accessories' && lowerName === 'accessory');
+      });
+    };
+
+    const matchKey = findMatch(catName);
+    let newDescription = form.description;
+    
+    // Check if current description is empty or currently matches a default description
+    const isDefault = Object.values(DEFAULT_DESCRIPTIONS).some(val => val.trim() === form.description.trim());
+    
+    if (!form.description.trim() || isDefault) {
+      if (matchKey) {
+        newDescription = DEFAULT_DESCRIPTIONS[matchKey];
+      } else {
+        newDescription = ""; // Clear if no match and it was default
+      }
+    }
+    
+    setForm(prev => ({ ...prev, category_id: catId, description: newDescription }));
   };
 
   const handleSaveProduct = async () => {
@@ -616,7 +673,7 @@ export default function AdminDashboard() {
           <div className="table-section">
             <table className="admin-table">
               <thead>
-                <tr><th>#</th><th>Full Name</th><th>Email</th><th>Phone</th><th>Joined</th><th>Actions</th></tr>
+                <tr><th>#</th><th>Full Name</th><th>Email</th><th>Joined</th><th>Actions</th></tr>
               </thead>
               <tbody>
                 {filteredUsers.map(u => (
@@ -624,7 +681,6 @@ export default function AdminDashboard() {
                     <td className="td-muted">{u.user_id}</td>
                     <td className="td-name">{u.full_name}</td>
                     <td className="td-muted">{u.email}</td>
-                    <td className="td-muted">{u.phone || "—"}</td>
                     <td className="td-muted">{u.created_at ? new Date(u.created_at).toLocaleDateString() : "—"}</td>
                     <td>
                       <button className="btn-icon btn-delete" onClick={() => handleDeleteUser(u.user_id)} title="Delete User">
@@ -633,7 +689,7 @@ export default function AdminDashboard() {
                     </td>
                   </tr>
                 ))}
-                {filteredUsers.length === 0 && <tr><td colSpan={6} className="loading-text">No users found</td></tr>}
+                {filteredUsers.length === 0 && <tr><td colSpan={5} className="loading-text">No users found</td></tr>}
               </tbody>
             </table>
           </div>
@@ -687,6 +743,98 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* ── SALES VISUALIZATION (BAR CHART) ── */}
+            <div className="recent-section" style={{ marginTop: "30px", background: "#fff", padding: "25px", borderRadius: "15px", boxShadow: "0 4px 20px rgba(0,0,0,0.05)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3 className="section-title" style={{ margin: 0 }}>Sales Trend</h3>
+                <div className="metric-toggle" style={{ 
+                  display: "flex", 
+                  backgroundColor: "#f3f4f6", 
+                  padding: "4px", 
+                  borderRadius: "10px",
+                  border: "1px solid #e5e7eb"
+                }}>
+                  <button 
+                    onClick={() => setSalesMetric("revenue")}
+                    style={{
+                      padding: "6px 16px",
+                      borderRadius: "8px",
+                      border: "none",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      backgroundColor: salesMetric === "revenue" ? "#fff" : "transparent",
+                      color: salesMetric === "revenue" ? "#e85a8a" : "#6b7280",
+                      boxShadow: salesMetric === "revenue" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    Revenue
+                  </button>
+                  <button 
+                    onClick={() => setSalesMetric("quantity")}
+                    style={{
+                      padding: "6px 16px",
+                      borderRadius: "8px",
+                      border: "none",
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      backgroundColor: salesMetric === "quantity" ? "#fff" : "transparent",
+                      color: salesMetric === "quantity" ? "#e85a8a" : "#6b7280",
+                      boxShadow: salesMetric === "quantity" ? "0 2px 4px rgba(0,0,0,0.1)" : "none",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    Orders
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ width: '100%', height: 350 }}>
+                {salesData.salesByDate && salesData.salesByDate.length > 0 ? (
+                  <ResponsiveContainer>
+                    <BarChart data={[...(salesData.salesByDate || [])].reverse()}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis 
+                        dataKey="date" 
+                        fontSize={12} 
+                        tickMargin={10} 
+                        axisLine={false} 
+                        tickLine={false}
+                        tickFormatter={(str) => {
+                          if (reportRange === "yearly") return str; // YYYY-MM
+                          const d = new Date(str);
+                          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        }}
+                      />
+                      <YAxis 
+                        fontSize={12} 
+                        axisLine={false} 
+                        tickLine={false} 
+                        tickFormatter={(val) => salesMetric === "revenue" ? `Rs.${val}` : val}
+                      />
+                      <Tooltip 
+                        cursor={{ fill: '#f9fafb' }}
+                        contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}
+                        formatter={(value) => salesMetric === "revenue" ? `Rs. ${parseFloat(value).toLocaleString()}` : `${value} orders`}
+                      />
+                      <Bar 
+                        dataKey={salesMetric === "revenue" ? "revenue" : "orders"} 
+                        fill="#e85a8a" 
+                        radius={[6, 6, 0, 0]} 
+                        barSize={Math.min(40, 300 / salesData.salesByDate.length)}
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", color: "#9ca3af" }}>
+                    No trend data available for this period
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="recent-section" style={{ marginTop: "30px" }}>
               <h3 className="section-title">Top Selling Products</h3>
               <table className="admin-table">
@@ -705,6 +853,8 @@ export default function AdminDashboard() {
                 </tbody>
               </table>
             </div>
+            
+            {/* Trend Table below ... */}
 
             <div className="recent-section" style={{ marginTop: "30px" }}>
               <h3 className="section-title">Daily Sales Trend (Last 30 Days)</h3>
@@ -754,7 +904,7 @@ export default function AdminDashboard() {
                   <label>Category</label>
                   <select
                     value={form.category_id}
-                    onChange={e => setForm({ ...form, category_id: e.target.value })}
+                    onChange={e => handleCategoryChange(e.target.value)}
                   >
                     <option value="">Select Category</option>
                     {categories.map(c => (
@@ -763,8 +913,14 @@ export default function AdminDashboard() {
                   </select>
                 </div>
                 <div className="form-group">
-                  <label>Stock</label>
-                  <input type="number" value={form.stock} onChange={e => setForm({ ...form, stock: e.target.value })} placeholder="10" />
+                  <label>Stock Status</label>
+                  <select 
+                    value={form.stock} 
+                    onChange={e => setForm({ ...form, stock: parseInt(e.target.value) })}
+                  >
+                    <option value={1}>In Stock</option>
+                    <option value={0}>Out of Stock</option>
+                  </select>
                 </div>
               </div>
               <div className="form-row">

@@ -14,6 +14,11 @@ function PaymentVerify() {
   const [txnId,   setTxnId]   = useState(null);
 
   useEffect(() => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     const pidx         = searchParams.get("pidx");
     const khaltiStatus = searchParams.get("status");
     const purchaseOrderId = searchParams.get("purchase_order_id") || sessionStorage.getItem("khalti_order_id");

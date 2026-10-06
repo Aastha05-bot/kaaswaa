@@ -48,7 +48,7 @@ router.post("/register", async (req, res) => {
           return res.status(500).json({ message: "Registration failed: " + err.message });
         }
         try {
-          await sendOTP(email, otp);
+          await sendOTP(email, otp, 'registration');
           console.log("OTP email sent to:", email);
           res.status(201).json({ message: "OTP sent to your email", email });
         } catch (emailErr) {
@@ -127,7 +127,7 @@ router.post("/resend-otp", (req, res) => {
       async (err) => {
         if (err) return res.status(500).json({ message: "Failed to resend OTP" });
         try {
-          await sendOTP(email, otp);
+          await sendOTP(email, otp, 'registration');
           res.json({ message: "New OTP sent to your email" });
         } catch (emailErr) {
           res.status(500).json({ message: "Failed to send OTP: " + emailErr.message });
@@ -139,11 +139,11 @@ router.post("/resend-otp", (req, res) => {
 
 // LOGIN — checks admins, staff, users tables
 router.post("/login", async (req, res) => {
-  const emailRaw = req.body.email || "";
+  const identifierRaw = req.body.email || ""; // keeping variable name 'email' in body for backward compat or updating it to 'identifier'
   const password = req.body.password;
-  const email = emailRaw.trim().toLowerCase();
+  const identifier = identifierRaw.trim().toLowerCase();
 
-  if (!email || !password)
+  if (!identifier || !password)
     return res.status(400).json({ message: "All fields are required" });
 
   const tables = [
@@ -154,7 +154,8 @@ router.post("/login", async (req, res) => {
 
   for (const { table, role, idField, nameField, needsVerify } of tables) {
     const results = await new Promise((resolve, reject) => {
-      db.query(`SELECT * FROM ${table} WHERE email = ?`, [email], (err, res) => {
+      // Allow login via email OR nameField (username)
+      db.query(`SELECT * FROM ${table} WHERE email = ? OR ${nameField} = ?`, [identifier, identifier], (err, res) => {
         if (err) reject(err);
         else resolve(res);
       });
@@ -214,7 +215,7 @@ router.post("/forgot-password", async (req, res) => {
         });
 
         try {
-          await sendOTP(email, otp);
+          await sendOTP(email, otp, 'password_reset');
           return res.json({ message: "Password reset verification code sent to your email" });
         } catch (e) {
           console.error("Failed to send OTP:", e);

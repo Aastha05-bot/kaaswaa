@@ -1,4 +1,10 @@
-function getEmailTemplate(otp) {
+function getEmailTemplate(otp, type = 'registration') {
+  let message = "Thank you for choosing Kaa Swaa! Please use the verification code below to complete your registration or login process.";
+  
+  if (type === 'password_reset') {
+    message = "Someone (hopefully you) requested a password reset for your Kaa Swaa account. Please use the verification code below to set a new password.";
+  }
+
   return `
 <!DOCTYPE html>
 <html>
@@ -27,7 +33,7 @@ function getEmailTemplate(otp) {
     </div>
     <div class="content">
       <p>Hello,</p>
-      <p>Thank you for choosing Kaa Swaa! Please use the verification code below to complete your registration or login process.</p>
+      <p>${message}</p>
       
       <div class="otp-box">
         <p class="otp-code">${otp}</p>

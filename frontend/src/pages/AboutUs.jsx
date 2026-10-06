@@ -47,9 +47,6 @@ function About() {
               </p>
             </div>
             <div className="ks-story-visual">
-              <div className="ks-img-frame">
-                <img src="/story.jpeg" alt="The story of Kaa Swaa" />
-              </div>
               <blockquote className="ks-pullquote">
                 "A flower doesn't rush to bloom. We take that same approach with everything we make."
               </blockquote>
@@ -57,7 +54,7 @@ function About() {
           </div>
         </div>
       </section>
- 
+
       {/* MISSION */}
       <section className="ks-section ks-section--tinted">
         <div className="ks-inner">
@@ -82,7 +79,7 @@ function About() {
           </div>
         </div>
       </section>
- 
+
       {/* VALUES */}
       <section className="ks-section">
         <div className="ks-inner">
@@ -91,7 +88,7 @@ function About() {
             <h2>How we work</h2>
           </div>
           <div className="ks-values-grid">
- 
+
             <div className="ks-value-card">
               <div className="ks-value-icon">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -102,7 +99,7 @@ function About() {
               <h3>Handmade, always</h3>
               <p>Every product is made by hand. We don't use machines and we don't outsource. What you get is made by us, for you.</p>
             </div>
- 
+
             <div className="ks-value-card">
               <div className="ks-value-icon">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -112,7 +109,7 @@ function About() {
               <h3>Earning your trust</h3>
               <p>Trust is built over time. We try to earn it with every order — through good communication, honest work, and real quality.</p>
             </div>
- 
+
             <div className="ks-value-card">
               <div className="ks-value-icon">
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -122,11 +119,11 @@ function About() {
               <h3>Your satisfaction matters</h3>
               <p>If something isn't right, we want to know. We genuinely care about your experience, from ordering to unboxing.</p>
             </div>
- 
+
           </div>
         </div>
       </section>
- 
+
       {/* TEAM */}
       <section className="ks-section ks-section--tinted">
         <div className="ks-inner">
@@ -139,7 +136,7 @@ function About() {
             </p>
           </div>
           <div className="ks-sisters">
- 
+
             <div className="ks-sister-card">
               <div className="ks-avatar">A</div>
               <p className="ks-sister-name">Aastha Shrestha</p>
@@ -154,12 +151,12 @@ function About() {
                   <path d="M3.5 6.5V10C5 11.5 9 11.5 10.5 10V6.5" stroke="#e85a8a" strokeWidth="1.1" />
                 </svg>
                 <div>
-                  <span className="ks-study-degree">BIT — Information Technology</span>
-                  <span className="ks-study-college">ICP, Kathmandu</span>
+                  <span className="ks-study-degree">BSc (Hons) Computing</span>
+                  <span className="ks-study-college">Informatics College Pokhara</span>
                 </div>
               </div>
             </div>
- 
+
             <div className="ks-sister-card">
               <div className="ks-avatar">A</div>
               <p className="ks-sister-name">Aashree Shrestha</p>
@@ -179,7 +176,7 @@ function About() {
                 </div>
               </div>
             </div>
- 
+
             <div className="ks-sister-card">
               <div className="ks-avatar">A</div>
               <p className="ks-sister-name">Aava Shrestha</p>
@@ -199,11 +196,11 @@ function About() {
                 </div>
               </div>
             </div>
- 
+
           </div>
         </div>
       </section>
- 
+
 
       <Footer />
     </div>

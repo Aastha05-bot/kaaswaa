@@ -27,7 +27,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Default */}
-        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
 
         {/* Public routes */}
         <Route path="/login" element={<Login />} />
@@ -38,12 +38,34 @@ function App() {
         <Route path="/categories" element={<Categories />} />
         <Route path="/categories/:id" element={<Categories />} />
         <Route path="/about" element={<AboutUs />} />
-        <Route path="/order-confirm" element={<OrderConfirm />} />
-        <Route path="/payment" element={<Payment />} />
-        <Route path="/email-template" element={<EmailTemplate />} />
-        <Route path="/payment-verify" element={<PaymentVerify />} />
-        <Route path="/payment-verify" element={<PaymentVerify />} />
-        <Route path="/payment/verify" element={<PaymentVerify />} />
+        <Route path="/product/:id" element={<ProductDetail />} />
+        
+        {/* User-dependent / Transactional (Hidden for guests or protected) */}
+        <Route path="/order-confirm" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <OrderConfirm />
+          </ProtectedRoute>
+        }/>
+        <Route path="/payment" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <Payment />
+          </ProtectedRoute>
+        }/>
+        <Route path="/payment-verify" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <PaymentVerify />
+          </ProtectedRoute>
+        }/>
+        <Route path="/payment-verify" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <PaymentVerify />
+          </ProtectedRoute>
+        }/>
+        <Route path="/payment/verify" element={
+          <ProtectedRoute allowedRoles={["user"]}>
+            <PaymentVerify />
+          </ProtectedRoute>
+        }/>
         <Route path="/staff-management" element={
           <ProtectedRoute allowedRoles={["admin"]}>
             <StaffManagement />
@@ -66,12 +88,8 @@ function App() {
           </ProtectedRoute>
         }/>
 
-        {/* Protected routes */}
-        <Route path="/home" element={
-          <ProtectedRoute allowedRoles={["user"]}>
-            <Home />
-          </ProtectedRoute>
-        }/>
+        {/* Public marketplace */}
+        <Route path="/home" element={<Home />} />
 
         <Route path="/staff" element={
           <ProtectedRoute allowedRoles={["staff"]}>

@@ -1,6 +1,6 @@
-const express     = require("express");
-const router      = express.Router();
-const db          = require("../db");
+const express = require("express");
+const router = express.Router();
+const db = require("../db");
 const verifyToken = require("../middleware/auth");
 
 /*
@@ -34,6 +34,7 @@ router.get("/wishlist/:userId", verifyToken, (req, res) => {
       p.price,
       p.image_url,
       p.tag,
+      p.stock,
       c.category_name
     FROM wishlist w
     JOIN product  p ON w.product_id  = p.product_id

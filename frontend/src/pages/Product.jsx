@@ -74,6 +74,9 @@ function Products() {
     setCurrentPage(1);
     if (tag) setActiveTag(tag);
     else setActiveTag("All");
+
+    // If search exists, reset category to All so user sees results from everywhere
+    if (search) setActiveCategory("All");
   }, [search, tag]);
 
   const requireAuth = (action) => {
@@ -164,7 +167,7 @@ function Products() {
               ? "No products found"
               : `Showing ${startIdx + 1}–${Math.min(startIdx + ITEMS_PER_PAGE, filtered.length)} of ${filtered.length} products`
             }
-            {search && <span className="products-search-tag"> for "{search}"</span>}
+            {search && <span className="products-search-tag"> for "<strong>{search}</strong>"</span>}
           </p>
         )}
       </section>

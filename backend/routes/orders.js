@@ -195,11 +195,11 @@ router.get("/admin/sales-report", verifyToken, async (req, res) => {
   let dateFilter = "";
   
   if (range === "weekly") {
-    dateFilter = "AND order_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+    dateFilter = " AND order_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
   } else if (range === "monthly") {
-    dateFilter = "AND order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+    dateFilter = " AND order_date >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
   } else if (range === "yearly") {
-    dateFilter = "AND order_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR)";
+    dateFilter = " AND order_date >= DATE_SUB(NOW(), INTERVAL 1 YEAR)";
   }
 
   try {
@@ -209,7 +209,7 @@ router.get("/admin/sales-report", verifyToken, async (req, res) => {
         COUNT(order_id) as total_orders,
         COALESCE(SUM(total), 0) as total_revenue
       FROM orders 
-      WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+      WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed', 'confirmed', 'processing') ${dateFilter}
     `);
 
     // 2. Top products
@@ -218,7 +218,7 @@ router.get("/admin/sales-report", verifyToken, async (req, res) => {
       FROM order_items oi
       JOIN orders o ON oi.order_id = o.order_id
       JOIN product p ON oi.product_id = p.product_id
-      WHERE LOWER(o.order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+      WHERE LOWER(o.order_status) IN ('delivered', 'shipped', 'packed', 'confirmed', 'processing') ${dateFilter}
       GROUP BY p.product_id
       ORDER BY total_sold DESC
       LIMIT 10
@@ -231,7 +231,7 @@ router.get("/admin/sales-report", verifyToken, async (req, res) => {
       trendSql = `
         SELECT DATE_FORMAT(order_date, '%Y-%m') as date, SUM(total) as revenue, COUNT(order_id) as orders
         FROM orders
-        WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+        WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed', 'confirmed', 'processing') ${dateFilter}
         GROUP BY DATE_FORMAT(order_date, '%Y-%m')
         ORDER BY date DESC
       `;
@@ -239,7 +239,7 @@ router.get("/admin/sales-report", verifyToken, async (req, res) => {
       trendSql = `
         SELECT DATE(order_date) as date, SUM(total) as revenue, COUNT(order_id) as orders
         FROM orders
-        WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+        WHERE LOWER(order_status) IN ('delivered', 'shipped', 'packed', 'confirmed', 'processing') ${dateFilter}
         GROUP BY DATE(order_date)
         ORDER BY DATE(order_date) DESC
       `;
@@ -259,15 +259,30 @@ router.get("/admin/sales-report", verifyToken, async (req, res) => {
       JOIN orders o ON oi.order_id = o.order_id
       JOIN product p ON oi.product_id = p.product_id
       LEFT JOIN payments pay ON o.order_id = pay.order_id
-      WHERE LOWER(o.order_status) IN ('delivered', 'shipped', 'packed') ${dateFilter}
+      WHERE LOWER(o.order_status) IN ('delivered', 'shipped', 'packed', 'confirmed', 'processing') ${dateFilter}
       ORDER BY o.order_date DESC
+    `);
+
+    // 5. Sales by Category
+    const [salesByCategory] = await db.promise().query(`
+      SELECT 
+        c.category_name, 
+        CAST(SUM(oi.quantity) AS SIGNED) as total_sold, 
+        CAST(SUM(oi.price * oi.quantity) AS FLOAT) as total_revenue
+      FROM order_items oi
+      JOIN orders o ON oi.order_id = o.order_id
+      JOIN product p ON oi.product_id = p.product_id
+      JOIN category c ON p.category_id = c.category_id
+      WHERE LOWER(o.order_status) IN ('delivered', 'shipped', 'packed', 'confirmed', 'processing') ${dateFilter}
+      GROUP BY c.category_id
     `);
 
     res.json({
       stats: statsResult[0] || { total_orders: 0, total_revenue: 0 },
       topProducts,
       salesByDate,
-      detailedSales
+      detailedSales,
+      salesByCategory
     });
   } catch (err) {
     console.error("SALES REPORT ERROR:", err);

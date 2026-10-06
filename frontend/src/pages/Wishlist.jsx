@@ -12,11 +12,17 @@ function Wishlist() {
   const username   = sessionStorage.getItem("username");
   const isLoggedIn = !!token;
 
-  const { wishlist, loading: ctxLoading, addToCart, toggleWishlist } = useContext(ShopContext);
+  const { wishlist, loading: ctxLoading, addToCart, toggleWishlist, fetchWishlist } = useContext(ShopContext);
   const [addedId, setAddedId] = useState(null);
 
-  /* redirect if not logged in */
-  useEffect(() => { if (!isLoggedIn) navigate("/login"); }, [isLoggedIn, navigate]);
+  /* redirect if not logged in & refresh data */
+  useEffect(() => { 
+    if (!isLoggedIn) {
+      navigate("/login"); 
+    } else {
+      fetchWishlist();
+    }
+  }, [isLoggedIn, navigate, fetchWishlist]);
 
   const handleAddToCart = (id) => {
     addToCart(id, 1);
@@ -66,15 +72,22 @@ function Wishlist() {
                   <p className="wl-price">Rs. {Number(p.price || 0).toLocaleString()}</p>
 
                   <div className="wl-actions">
-                    <button
-                      className={`wl-cart-btn ${addedId === p.product_id ? "added" : ""}`}
-                      onClick={() => handleAddToCart(p.product_id)}
-                    >
-                      {addedId === p.product_id ? "✓ Added!" : "Add to Cart"}
-                    </button>
-                    <button className="wl-move-btn" onClick={() => moveToCart(p.product_id)}>
-                      Move to Cart
-                    </button>
+                    {/* Simplified check: if stock is exactly 0 or '0', it's out of stock */}
+                    {p.stock == 0 && p.stock !== null && p.stock !== undefined ? (
+                      <span className="wl-oos-label">Out of Stock</span>
+                    ) : (
+                      <>
+                        <button
+                          className={`wl-cart-btn ${addedId === p.product_id ? "added" : ""}`}
+                          onClick={() => handleAddToCart(p.product_id)}
+                        >
+                          {addedId === p.product_id ? "✓ Added!" : "Add to Cart"}
+                        </button>
+                        <button className="wl-move-btn" onClick={() => moveToCart(p.product_id)}>
+                          Move to Cart
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 

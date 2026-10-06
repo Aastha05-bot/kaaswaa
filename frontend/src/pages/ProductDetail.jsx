@@ -8,6 +8,71 @@ import "../Styles/ProductDetail.css";
 
 const BASE = "http://localhost:5000/api";
 
+const CATEGORY_DETAILS = {
+  "Keyring": [
+    "Handcrafted with care and fine detail",
+    "Lightweight and easy to carry daily",
+    "Available in various cute designs",
+    "Compact — fits any bag or pocket",
+    "Makes a sweet and affordable gift"
+  ],
+  "Pots": [
+    "Decorative and functional for home use",
+    "Suitable for small indoor plants",
+    "Adds a charming touch to any space",
+    "Available in different sizes",
+    "Great as a standalone home accent piece"
+  ],
+  "Dolls": [
+    "Softly crafted with quality materials",
+    "Ideal for children and collectors alike",
+    "Perfect as a nursery or room decoration",
+    "Thoughtful gift suitable for all ages",
+    "Made with attention to detail and love"
+  ],
+  "Bouquets": [
+    "Fresh, fragrant, and beautifully arranged",
+    "Suitable for birthdays, anniversaries, and celebrations",
+    "Comes lovingly wrapped and ready to gift",
+    "Available in various sizes and styles",
+    "Perfect for any occasion or just because"
+  ],
+  "Flowers": [
+    "Wide selection including roses, lilies, tulips, daisies, and seasonal blooms",
+    "Pick your preferred flower types from the available selection",
+    "Choose your own colour palette or go fully mixed",
+    "Select bouquet size — small, medium, or large",
+    "Choose your wrapping style and ribbon colour",
+    "Add a personalised message or note card"
+  ],
+  "Clothes": [
+    "Soft, comfortable fabric for everyday wear",
+    "Sweet aesthetic with a cosy and flattering fit",
+    "Designed to suit various body types",
+    "Size Guide:",
+    "• XS — fits up to approx. 40–45 kg",
+    "• S — fits up to approx. 45–55 kg",
+    "• M — fits up to approx. 55–65 kg",
+    "• L — fits up to approx. 65–72 kg",
+    "• XL — fits up to approx. 72–80 kg",
+    "• XXL — fits up to approx. 80–90 kg"
+  ],
+  "Accessories": [
+    "Dainty and carefully curated pieces",
+    "Includes hair clips, bags, and more",
+    "Perfect finishing touch to any outfit",
+    "Suitable for everyday wear",
+    "Packaged beautifully for gifting"
+  ],
+  "Bracelets": [
+    "Delicate and handcrafted with care",
+    "Lightweight and comfortable for daily wear",
+    "Stackable — mix and layer multiple pieces",
+    "Made with durable materials to last",
+    "Comes gift-ready for yourself or a loved one"
+  ]
+};
+
 function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -282,13 +347,25 @@ function ProductDetail() {
           <div className="pd-details-box">
             <h2 className="pd-details-title">Product Details</h2>
             <div className="pd-details-content">
-              {product.description ? (
-                <ul className="pd-details-list">
-                  {product.description.split('\n').filter(line => line.trim()).map((line, i) => (
-                    <li key={i}>{line.trim().startsWith('•') ? line.trim().substring(1).trim() : line.trim()}</li>
-                  ))}
-                </ul>
-              ) : (
+              {product.category_name === "Flowers" && (
+                <p className="pd-custom-tag">✨ Customisable — Build Your Own Bouquet</p>
+              )}
+              
+              <ul className="pd-details-list">
+                {/* Specific product description lines */}
+                {product.description && product.description.split('\n').filter(line => line.trim()).map((line, i) => (
+                  <li key={`desc-${i}`}>{line.trim().startsWith('•') ? line.trim().substring(1).trim() : line.trim()}</li>
+                ))}
+                
+                {/* Category-specific reusable points */}
+                {CATEGORY_DETAILS[product.category_name] && CATEGORY_DETAILS[product.category_name].map((point, i) => (
+                  <li key={`cat-${i}`} className={point.includes("fits up to") ? "pd-size-chart-item" : ""}>
+                    {point.startsWith('•') ? point.substring(1).trim() : point}
+                  </li>
+                ))}
+              </ul>
+
+              {!product.description && !CATEGORY_DETAILS[product.category_name] && (
                 <p>No extra details available for this product.</p>
               )}
             </div>
@@ -341,41 +418,48 @@ function ProductDetail() {
           {/* Write review */}
           <div className="pd-review-form">
             <h3>Leave a Review</h3>
-            <form onSubmit={handleReviewSubmit}>
-              <div className="pd-stars">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <span
-                    key={star}
-                    className={`pd-star ${star <= (hoverRating || rating) ? "filled" : ""}`}
-                    onClick={() => setRating(star)}
-                    onMouseEnter={() => setHoverRating(star)}
-                    onMouseLeave={() => setHoverRating(0)}
-                  >★</span>
-                ))}
+            {isLoggedIn ? (
+              <form onSubmit={handleReviewSubmit}>
+                <div className="pd-stars">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <span
+                      key={star}
+                      className={`pd-star ${star <= (hoverRating || rating) ? "filled" : ""}`}
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoverRating(star)}
+                      onMouseLeave={() => setHoverRating(0)}
+                    >★</span>
+                  ))}
+                </div>
+                <textarea
+                  placeholder="Write your review (optional)..."
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  rows={3}
+                />
+                <div style={{ marginTop: '10px', marginBottom: '20px' }}>
+                  <label style={{ fontSize: '13px', color: '#e85a8a', cursor: 'pointer', display: 'inline-block', padding: '6px 12px', border: '1px solid #e85a8a', borderRadius: '4px' }}>
+                    {reviewImage ? "✓ Photo Added" : "Add Photo"}
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={e => setReviewImage(e.target.files[0])} 
+                      style={{ display: 'none' }} 
+                    />
+                  </label>
+                  {reviewImage && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>{reviewImage.name}</span>}
+                </div>
+                {reviewMsg && <p className="pd-review-msg">{reviewMsg}</p>}
+                <button type="submit" disabled={submitting}>
+                  {submitting ? "Submitting..." : "Submit Review"}
+                </button>
+              </form>
+            ) : (
+              <div className="pd-review-login-prompt">
+                <p>Have you purchased this product? Sign in to share your experience with others!</p>
+                <button className="pd-login-btn" onClick={() => navigate("/login")}>Sign In to Review</button>
               </div>
-              <textarea
-                placeholder="Write your review (optional)..."
-                value={comment}
-                onChange={e => setComment(e.target.value)}
-                rows={3}
-              />
-              <div style={{ marginTop: '10px', marginBottom: '10px' }}>
-                <label style={{ fontSize: '13px', color: '#e85a8a', cursor: 'pointer', display: 'inline-block', padding: '6px 12px', border: '1px solid #e85a8a', borderRadius: '4px' }}>
-                  {reviewImage ? "✓ Photo Added" : "Add Photo"}
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    onChange={e => setReviewImage(e.target.files[0])} 
-                    style={{ display: 'none' }} 
-                  />
-                </label>
-                {reviewImage && <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>{reviewImage.name}</span>}
-              </div>
-              {reviewMsg && <p className="pd-review-msg">{reviewMsg}</p>}
-              <button type="submit" disabled={submitting}>
-                {submitting ? "Submitting..." : "Submit Review"}
-              </button>
-            </form>
+            )}
           </div>
 
           {/* Customer Reviews */}

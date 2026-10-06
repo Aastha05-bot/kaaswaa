@@ -299,9 +299,46 @@
 }
 
 .products-empty p {
-  font-size: 25px;
+  font-size: 20px;
   color: var(--gray);
-  font-weight: 300;
+  font-weight: 400;
+  margin-bottom: 24px;
+}
+
+.products-empty-icon {
+  font-size: 48px;
+  color: var(--pink-light);
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.6;
+}
+
+.products-clear-btn {
+  background: var(--pink);
+  color: white;
+  border: none;
+  padding: 12px 30px;
+  border-radius: 50px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(232, 90, 138, 0.2);
+}
+
+.products-clear-btn:hover {
+  background: var(--pink-light);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(232, 90, 138, 0.3);
+}
+
+.products-search-tag {
+  color: var(--pink);
+  font-weight: 500;
+}
+
+.products-result-count strong {
+  color: var(--pink);
 }
 
 /* PAGINATION */

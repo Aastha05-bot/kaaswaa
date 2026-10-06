@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, useContext } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ShopContext } from "../Context/ShopContext";
 import "../Styles/Header.css";
 
 function Header({ isLoggedIn, username }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuOpen,      setMenuOpen]      = useState(false);
   const [searchQuery,   setSearchQuery]   = useState("");
   const [dropdownOpen,  setDropdownOpen]  = useState(false);
@@ -16,6 +17,13 @@ function Header({ isLoggedIn, username }) {
   const isAuth = isLoggedIn !== undefined ? isLoggedIn : !!sessionStorage.getItem("token");
   const userDisp = username || sessionStorage.getItem("username");
   const profilePic = sessionStorage.getItem("profile_picture");
+
+  // Keep search bar in sync with URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get("search") || "";
+    setSearchQuery(q);
+  }, [location.search]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -113,6 +121,17 @@ function Header({ isLoggedIn, username }) {
               </div>
             </button>
           </div>
+
+          {/* Login/Logout Button */}
+          {isAuth ? (
+            <button className="nav-auth-btn logout" onClick={handleLogout}>
+              Logout
+            </button>
+          ) : (
+            <button className="nav-auth-btn login" onClick={() => navigate("/login")}>
+              Login
+            </button>
+          )}
 
         </div>
 

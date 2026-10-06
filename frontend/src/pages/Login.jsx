@@ -1,11 +1,20 @@
 import "../Styles/style.css";
-import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useAuth } from "../Context/AuthContext";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMsg(location.state.message);
+      // Optional: Clear state so message doesn't persist on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location]);
   
   const [mode, setMode] = useState("login"); // "login" | "forgot" | "reset"
   
@@ -116,7 +125,13 @@ function Login() {
             <>
               <h2>LOG IN</h2>
               <form onSubmit={handleLoginSubmit}>
-                <input type="email" placeholder="Email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input 
+                  type="text" 
+                  placeholder="Email or Username" 
+                  required 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)} 
+                />
                 <input type="password" placeholder="Password" required value={password} onChange={(e) => setPassword(e.target.value)} />
                 <div className="form-options">
                   <label className="checkbox-label">

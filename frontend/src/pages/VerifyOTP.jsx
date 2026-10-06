@@ -29,13 +29,10 @@ function VerifyOTP() {
       const data = await response.json();
       if (!response.ok) return setError(data.message || "Verification failed");
 
-      login(data);
-
-      if (data.role === "admin") navigate("/admin/dashboard");
-      else if (data.role === "staff") navigate("/staff");
-      else navigate("/home");
+      navigate("/login", { state: { message: "Email verified! You can now log in." } });
 
     } catch {
+
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);

@@ -52,6 +52,12 @@ function Customizer() {
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      navigate("/login");
+    }
+  }, [isLoggedIn, navigate]);
+
+  useEffect(() => {
     fetchProduct();
   }, [id]);
 

@@ -39,10 +39,13 @@
 /* ─── STORY ─────────────────────────────────────────── */
  
 .ks-story {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4rem;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2.5rem;
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
 }
  
 .ks-story-text h2 {
@@ -94,15 +97,34 @@
 }
  
 .ks-pullquote {
-  border-left: 2.5px solid var(--pink-light);
-  padding-left: 1rem;
+  border-left: none;
+  border-top: 1px solid var(--pink-soft);
+  border-bottom: 1px solid var(--pink-soft);
+  padding: 1.5rem 0;
   font-family: 'Cormorant Garamond', serif;
-  font-size: 19px;
+  font-size: 22px;
   font-style: italic;
   font-weight: 300;
   color: var(--pink-light);
-  line-height: 1.55;
-  margin: 0;
+  line-height: 1.45;
+  margin: 1rem 0 0;
+  text-align: center;
+  position: relative;
+}
+
+.ks-pullquote::before,
+.ks-pullquote::after {
+  content: '“';
+  font-size: 40px;
+  color: var(--pink-soft);
+  position: absolute;
+  opacity: 0.5;
+}
+
+.ks-pullquote::before {
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px);
 }
  
 /* ─── MISSION ───────────────────────────────────────── */
@@ -319,7 +341,6 @@
 /* ─── RESPONSIVE ────────────────────────────────────── */
  
 @media (max-width: 720px) {
-  .ks-story,
   .ks-mission-wrap,
   .ks-values-grid,
   .ks-sisters {
